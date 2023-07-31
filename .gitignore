@@ -1,0 +1,5 @@
+android/build/
+android/dist/
+
+# now constructed from template
+android/manifest
