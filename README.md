@@ -1,3 +1,11 @@
+# EMA Beacon Detection
+
+## Testing
+
+```bash
+ti build --target device --log-level warn --platform android --sdk 12.2.0.v20230718101411 -C 25041JEGR20857
+```
+
 # TiDev Titanium Mobile Module Project
 
 This is a skeleton Titanium Mobile Mobile module project.

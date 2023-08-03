@@ -5,5 +5,14 @@
 		configuration in <iphone> and <android> sections
 	-->
 	<android xmlns:android="http://schemas.android.com/apk/res/android">
+
+		<!-- Copied from BeaconReference app-->
+		<uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
+		<uses-permission android:name="android.permission.INTERNET"/>
+		<uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
+		<uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+		<uses-permission android:name="android.permission.BLUETOOTH_SCAN"/>
+		<!-- end BeaconReference app-->
+
 	</android>
 </ti:module>

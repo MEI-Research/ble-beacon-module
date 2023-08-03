@@ -1,5 +1,6 @@
 
 dependencies {
-	// Add the module's library dependencies here.
-	// See:  https://developer.android.com/studio/build/dependencies
+    implementation "org.altbeacon:android-beacon-library:2.19.5"
+    // 2.19.6 causes errors when building the app
+    // implementation "org.altbeacon:android-beacon-library:2.19.6"
 }

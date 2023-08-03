@@ -13,7 +13,7 @@ copyright: Copyright (c) 2023 by Your Company
 # these should not be edited
 name: ble-beacon
 moduleid: com.pilrhealth.beacon
-guid: 77f86e33-661a-4a77-bea0-81f180a7cda2
+guid: 25cddb8b-3ae5-470e-8347-9c541e1f694a
 platform: android
 minsdk: 12.1.1.GA
 

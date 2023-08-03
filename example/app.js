@@ -2,6 +2,7 @@
 // You should do something interesting in this harness
 // to test out the module and to provide instructions
 // to users on how to use it by example.
+import ble_beacon  from 'com.pilrhealth.beacon';
 
 
 // open a single window
@@ -11,7 +12,6 @@ win.add(label);
 win.open();
 
 // TODO: write your module tests here
-import ble_beacon  from 'com.pilrhealth.beacon';
 Ti.API.info("module is => " + ble_beacon);
 
 label.text = ble_beacon.example();

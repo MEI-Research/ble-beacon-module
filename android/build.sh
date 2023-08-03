@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 
-TI_SDK_VERSION="12.1.2.GA"
+TI_SDK_VERSION=12.1.2.GA
+JAVA_VERSION=17.0.7-amzn
 GITINFO=$( git describe --long --abbrev=6 --dirty=+ )
 
 expand-template ()
@@ -16,11 +17,13 @@ expand-template ()
     eval "$CMD"
 }
 
-expand-template ./manifest.template >manifest \
-  GITINFO TI_SDK_VERSION
-
 echo '[mei] Building Android Plot Projects module via Titanium SDK'
 
+. ~/.sdkman/bin/sdkman-init.sh
+sdk use java $JAVA_VERSION
+
+expand-template ./manifest.template >manifest \
+  GITINFO TI_SDK_VERSION
 
 #NODE_VERSION=14
 
