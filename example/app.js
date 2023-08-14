@@ -4,15 +4,56 @@
 // to users on how to use it by example.
 import ble_beacon  from 'com.pilrhealth.beacon';
 
+const ANDROID_PERMISSIONS = [
+    //'android.permission.BLUETOOTH_ADVERTISE',
+    'android.permission.BLUETOOTH_CONNECT',
+    'android.permission.ACCESS_COARSE_LOCATION',
+    'android.permission.ACCESS_FINE_LOCATION',
+    'android.permission.BLUETOOTH_SCAN',
+];
+
 
 // open a single window
 const win = Ti.UI.createWindow();
 const label = Ti.UI.createLabel();
 win.add(label);
-win.open();
 
 // TODO: write your module tests here
 Ti.API.info("module is => " + ble_beacon);
+
+console.error("DEBUG>>>>> HERE");
+
+async function startBLE() {
+    console.error('starting BLE');
+    let ok = true;
+    for (const perm of ANDROID_PERMISSIONS) {
+        console.debug('requesting', perm)
+        const result = await new Promise(resolve => {
+            Ti.Android.requestPermissions(perm, resolve)
+        });
+        console.error(perm, 'result=', result);
+        if (!result.success)
+            ok = false;
+    }
+    ble_beacon.startBeaconDetction();
+    console.error('should have started, what=', what);
+}
+
+
+win.open().then(startBLE);
+//win.open().then(() => {
+    //console.error("DEBUG>>>>> HERE2");
+//
+    //const what = Ti.Android.requestPermissions(ANDROID_PERMISSIONS, result => {
+        //console.error('got result2=', result)
+        //if (result.success) {
+            //console.error('startinng2...')
+            //ble_beacon.startBeaconDetction();
+        //}
+    //});
+    //console.error('should have started, what=', what);
+   // 
+//});
 
 label.text = ble_beacon.example();
 

@@ -1,6 +1,7 @@
 
 dependencies {
     implementation "org.altbeacon:android-beacon-library:2.19.5"
-    // 2.19.6 causes errors when building the app
+    // 2.19.6 causes errors when building the app, even though the module builds without error.
+    // This is why we use fixed versions instead of "2+" like the reference app
     // implementation "org.altbeacon:android-beacon-library:2.19.6"
 }

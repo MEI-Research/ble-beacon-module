@@ -9,6 +9,8 @@
 
 package com.pilrhealth.beacon
 
+import android.os.Build
+import androidx.annotation.RequiresApi
 import org.appcelerator.kroll.KrollModule
 import org.appcelerator.kroll.KrollDict
 import org.appcelerator.kroll.annotations.Kroll
@@ -16,6 +18,7 @@ import org.appcelerator.kroll.common.Log
 import org.appcelerator.kroll.common.TiConfig
 import org.appcelerator.titanium.TiApplication
 
+@RequiresApi(Build.VERSION_CODES.O)
 @Kroll.module(name = "BleBeacon", id = "com.pilrhealth.beacon")
 class BleBeaconModule: KrollModule() {
 
@@ -40,6 +43,12 @@ class BleBeaconModule: KrollModule() {
 	}
 
 	// Methods
+
+	@Kroll.method
+	fun startBeaconDetection() {
+		Log.e(LCAT, "starting detection")
+		BeaconDetector(TiApplication.getInstance()).start()
+	}
 
 	@Kroll.method
 	fun example(): String {
