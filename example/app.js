@@ -23,22 +23,29 @@ Ti.API.info("module is => " + ble_beacon);
 
 console.error("DEBUG>>>>> HERE");
 
-async function startBLE() {
+function startBLE() {
     console.error('starting BLE');
-    const ok = await ble_beacon.requestPermissions();
-    console.error('ok=', ok);
-    //let ok = true;
-    //for (const perm of ANDROID_PERMISSIONS) {
-    //    console.debug('requesting', perm)
-    //    const result = await new Promise(resolve => {
-    //        Ti.Android.requestPermissions(perm, resolve)
-    //    });
-    //    console.error(perm, 'result=', result);
-    //    if (!result.success)
-    //        ok = false;
-    //}
-    const what = ble_beacon.startBeaconDetction();
-    console.error('should have started, what=', what);
+    Ti.Android.requestPermissions(
+        ['android.permission.ACCESS_COARSE_LOCATION', 'android.permission.ACCESS_FINE_LOCATION'],
+        e => {
+            Ti.Android.requestPermissions(
+                ['android.permission.ACCESS_BACKGROUND_LOCATION'], e => {
+                    if (e.success) {
+                        Ti.Android.requestPermissions(
+                            ['android.permission.BLUETOOTH_SCAN', 'android.permission.BLUETOOTH_CONNECT'], e => {
+                                const what = ble_beacon.startBeaconDetection();
+                                console.error('should have started, what=', what);
+                                
+                            });
+                    }
+                });
+        });
+}
+
+async function requestPermissions(permissions) {
+    return new Promise(resolve => {
+        Ti.Android.requestPermissions(permissions, resolve)
+    })
 }
 
 
