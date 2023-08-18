@@ -10,6 +10,8 @@
 package com.pilrhealth.beacon
 
 import android.app.Activity
+import android.os.Build
+import androidx.annotation.RequiresApi
 import org.appcelerator.kroll.KrollDict
 import org.appcelerator.kroll.annotations.Kroll
 import org.appcelerator.kroll.common.Log
@@ -22,6 +24,7 @@ import org.appcelerator.titanium.view.TiCompositeLayout.LayoutArrangement
 import org.appcelerator.titanium.view.TiUIView
 
 // This proxy can be created by calling BleBeacon.createExample({ message: 'hello world' })
+@RequiresApi(Build.VERSION_CODES.O)
 @Kroll.proxy(creatableInModule = BleBeaconModule::class)
 class ExampleProxy : TiViewProxy() {
 	

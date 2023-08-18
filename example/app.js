@@ -25,17 +25,19 @@ console.error("DEBUG>>>>> HERE");
 
 async function startBLE() {
     console.error('starting BLE');
-    let ok = true;
-    for (const perm of ANDROID_PERMISSIONS) {
-        console.debug('requesting', perm)
-        const result = await new Promise(resolve => {
-            Ti.Android.requestPermissions(perm, resolve)
-        });
-        console.error(perm, 'result=', result);
-        if (!result.success)
-            ok = false;
-    }
-    ble_beacon.startBeaconDetction();
+    const ok = await ble_beacon.requestPermissions();
+    console.error('ok=', ok);
+    //let ok = true;
+    //for (const perm of ANDROID_PERMISSIONS) {
+    //    console.debug('requesting', perm)
+    //    const result = await new Promise(resolve => {
+    //        Ti.Android.requestPermissions(perm, resolve)
+    //    });
+    //    console.error(perm, 'result=', result);
+    //    if (!result.success)
+    //        ok = false;
+    //}
+    const what = ble_beacon.startBeaconDetction();
     console.error('should have started, what=', what);
 }
 

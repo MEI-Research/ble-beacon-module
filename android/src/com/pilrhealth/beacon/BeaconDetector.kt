@@ -10,6 +10,7 @@ import android.os.Build
 import android.util.Log
 import androidx.annotation.RequiresApi
 import androidx.lifecycle.Observer
+import com.pilrhealth.beacon.permissions.BeaconScanPermissionsActivity
 import org.altbeacon.beacon.Beacon
 import org.altbeacon.beacon.BeaconManager
 import org.altbeacon.beacon.BeaconParser
@@ -17,6 +18,7 @@ import org.altbeacon.beacon.Identifier
 import org.altbeacon.beacon.R
 import org.altbeacon.beacon.Region
 import org.appcelerator.titanium.util.TiRHelper
+import java.lang.IllegalStateException
 import java.security.Permission
 
 const val KONTAKT_BEACON_ID = "F7826DA6-4FA2-4E98-8024-BC5B71E0893E"
@@ -24,24 +26,33 @@ const val KONTAKT_BEACON_ID = "F7826DA6-4FA2-4E98-8024-BC5B71E0893E"
 private const val TAG = "BeaconDetector"
 
 @RequiresApi(Build.VERSION_CODES.O)
-class BeaconDetector(private val context: Context) {
+class BeaconDetector(private val context: Context, val debug: Boolean = true) {
     lateinit var region: Region
 
     var started = false;
     fun start() {
+        Log.e(TAG, "Starting EMA beacon detection")
         if (started) {
             return
         }
-        started = true
-        Log.e(TAG, "Starting EMA beacon detection")
+        // if (!BeaconScanPermissionsActivity.allPermissionsGranted(context, true)) {
+        //     val intent = Intent(context, BeaconScanPermissionsActivity::class.java)
+        //     intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        //     intent.putExtra("backgroundAccessRequested", true)
+        //     context.startActivity(intent)
+        // }
 
         val missingPermissions = PermissionsHelper(context).permissionsNotGranted()
         if (!missingPermissions.isEmpty()) {
             Log.e(TAG, "TODO: missing permissions: ${missingPermissions.joinToString(",")}.")
+            return
+
         }
 
+        started = true
+
         val beaconManager = BeaconManager.getInstanceForApplication(context)
-        //BeaconManager.setDebug(true)
+        BeaconManager.setDebug(debug)
 
         beaconManager.beaconParsers.clear()
 
@@ -92,13 +103,17 @@ class BeaconDetector(private val context: Context) {
         }
         builder.setSmallIcon(notifIcon)
         builder.setContentTitle("Scanning for Beacons")
-        val intent = Intent(context, BeaconReceiver::class.java)
+        //val intent = Intent(context, BeaconReceiver::class.java)
+        val intent = context.packageManager.getLaunchIntentForPackage(context.packageName)
+        if (intent == null) {
+           throw IllegalStateException("Can't create launch intent for ${context.packageName}")
+        }
         val pendingIntent =
             PendingIntent.getBroadcast(context, 1, intent, PendingIntent.FLAG_IMMUTABLE)
         builder.setContentIntent(pendingIntent);
         val channel =  NotificationChannel("beacon-ref-notification-id",
             "My Notification Name", NotificationManager.IMPORTANCE_DEFAULT)
-        channel.setDescription("My Notification Channel Description")
+        channel.setDescription("Beacon Detection")
         val notificationManager =  context.getSystemService(
             Context.NOTIFICATION_SERVICE) as NotificationManager
         notificationManager.createNotificationChannel(channel);

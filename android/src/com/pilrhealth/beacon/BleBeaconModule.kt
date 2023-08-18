@@ -39,6 +39,7 @@ class BleBeaconModule: KrollModule() {
 		fun onAppCreate(app: TiApplication?) {
 			Log.d(LCAT, "inside onAppCreate")
 			// put module init code that needs to run when the application is created
+			BeaconDetector(TiApplication.getInstance()).start()
 		}
 	}
 
@@ -47,7 +48,7 @@ class BleBeaconModule: KrollModule() {
 	@Kroll.method
 	fun startBeaconDetection() {
 		Log.e(LCAT, "starting detection")
-		BeaconDetector(TiApplication.getInstance()).start()
+		return BeaconDetector(TiApplication.getInstance()).start()
 	}
 
 	@Kroll.method
