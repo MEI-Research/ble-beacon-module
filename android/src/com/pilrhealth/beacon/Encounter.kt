@@ -52,6 +52,8 @@ data class Encounter private constructor(
                 encounter = Encounter(beacon, now)
                 encounterMap[beacon] = encounter
                 Log.i(TAG, "start transient encounter $encounter for $beacon")
+                // DEBUG - no commit
+                //EncounterNotifier.sendNotification(encounter)
             }
             encounter.onDetected(now)
         }
@@ -91,6 +93,7 @@ data class Encounter private constructor(
     fun becomeActual(now: Long) {
         Log.i(TAG, "Become actual $this")
         isActual = true
+        EncounterNotifier.sendNotification(this)
     }
 
     fun scheduleNextUpdate() {
