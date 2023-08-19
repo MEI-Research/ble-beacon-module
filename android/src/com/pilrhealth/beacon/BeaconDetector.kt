@@ -5,31 +5,36 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
-import android.content.Intent
 import android.os.Build
 import android.util.Log
 import androidx.annotation.RequiresApi
 import androidx.lifecycle.Observer
-import com.pilrhealth.beacon.permissions.BeaconScanPermissionsActivity
 import org.altbeacon.beacon.Beacon
 import org.altbeacon.beacon.BeaconManager
 import org.altbeacon.beacon.BeaconParser
 import org.altbeacon.beacon.Identifier
-import org.altbeacon.beacon.R
 import org.altbeacon.beacon.Region
+import org.appcelerator.titanium.TiApplication
 import org.appcelerator.titanium.util.TiRHelper
-import java.lang.IllegalStateException
-import java.security.Permission
 
 const val KONTAKT_BEACON_ID = "F7826DA6-4FA2-4E98-8024-BC5B71E0893E"
 
 private const val TAG = "BeaconDetector"
 
+
 @RequiresApi(Build.VERSION_CODES.O)
-class BeaconDetector(private val context: Context, val debug: Boolean = true) {
+class BeaconDetector() {
+    companion object {
+        var  betweenScanPeriod: Long = 30 * 1000
+        var scanPeriod: Long = 10 * 1000
+    }
+
     lateinit var region: Region
 
-    var started = false;
+    private val context: Context = TiApplication.getInstance()
+    private val debug = false
+
+    private var started = false;
     fun start() {
         Log.e(TAG, "Starting EMA beacon detection")
         if (started) {
@@ -67,8 +72,8 @@ class BeaconDetector(private val context: Context, val debug: Boolean = true) {
 
         setupForegroundService()
         beaconManager.setEnableScheduledScanJobs(false);
-        beaconManager.setBackgroundBetweenScanPeriod(30000);
-        beaconManager.setBackgroundScanPeriod(10000);
+        beaconManager.setBackgroundBetweenScanPeriod(betweenScanPeriod);
+        beaconManager.setBackgroundScanPeriod(scanPeriod);
 
         region = Region("kontakt", Identifier.parse(KONTAKT_BEACON_ID), null, null)
         beaconManager.startMonitoring(region)
@@ -91,6 +96,7 @@ class BeaconDetector(private val context: Context, val debug: Boolean = true) {
         Log.d(TAG, "Ranged: ${beacons.count()} beacons")
         for (beacon: Beacon in beacons) {
             Log.d(TAG, "$beacon about ${beacon.distance} meters away")
+            Encounter.beaconDetected(beacon.id2.toString(), beacon.id3.toString())
         }
     }
 

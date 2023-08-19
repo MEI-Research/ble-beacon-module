@@ -33,9 +33,8 @@ function startBLE() {
                     if (e.success) {
                         Ti.Android.requestPermissions(
                             ['android.permission.BLUETOOTH_SCAN', 'android.permission.BLUETOOTH_CONNECT'], e => {
-                                const what = ble_beacon.startBeaconDetection();
-                                console.error('should have started, what=', what);
-                                
+                                ble_beacon.addFriend('Bacchus', '51166', '48165');
+                                ble_beacon.startBeaconDetection();
                             });
                     }
                 });

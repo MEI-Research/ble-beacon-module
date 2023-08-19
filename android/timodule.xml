@@ -15,11 +15,21 @@
       <uses-permission android:name="android.permission.COARSE_LOCATION" />
       <uses-permission android:name="android.permission.BLUETOOTH_SCAN"/>
       <uses-permission android:name="android.permission.BLUETOOTH_CONNECT"/>
+
+
+      <!-- Boot & notification permissions -->
+      <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
+      <uses-permission android:name="android.permission.WAKE_LOCK" />
+      <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM"/>
       <!-- end BeaconReference app-->
       <application>
-        <activity android:name="org.altbeacon.beacon.permissions.BeaconScanPermissionsActivity"
-                  android:exported="false"/>
-
+        <receiver android:name=".BootupBroadcastReceiver" android:exported="true">
+          <intent-filter>
+            <action android:name="android.intent.action.BOOT_COMPLETED"/>
+            <action android:name="android.intent.action.QUICKBOOT_POWERON" />
+          </intent-filter>
+        </receiver>
+        <receiver android:name=".EncounterUpdateReceiver" android:exported="false" android:enabled="true"/>
       </application>
     </manifest>
 
