@@ -40,8 +40,12 @@ function startBLE() {
                             ],
                             e => {
                                 //ble_beacon.addFriend('Bacchus', '51166', '48165');
-                                ble_beacon.setFriendList('foo-0-0-footag, Bacchus-51166-48165');
                                 ble_beacon.startBeaconDetection();
+                                ble_beacon.setFriendList('foo-0-0-footag, Bacchus-51166-48165');
+                                ble_beacon.addEventListener('ble.event', e => {
+                                    console.error("GOT EVENT>>>>>>", e)
+                                    console.error("messages=", ble_beacon.fetchEvents())
+                                })
                             });
                     }
                 });

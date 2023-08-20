@@ -2,8 +2,11 @@
 
 ## Testing
 
+The following command runs the example app which exercises all of the modules functionality.
+
 ```bash
-ti build --target device --log-level warn --platform android --sdk 12.2.0.v20230718101411 -C 25041JEGR20857
+MY_DEVICE=25041JEGR20857
+ti build --target device --log-level warn --platform android --sdk 12.2.0.v20230718101411 -C $MY_DEVICE
 ```
 
 # TiDev Titanium Mobile Module Project

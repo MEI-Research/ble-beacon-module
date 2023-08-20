@@ -115,9 +115,9 @@ class BeaconDetector() {
     }
 
     val centralRangingObserver = Observer<Collection<Beacon>> { beacons ->
-        Log.d(TAG, "Ranged: ${beacons.count()} beacons")
+        // Log.d(TAG, "Ranged: ${beacons.count()} beacons")
         for (beacon: Beacon in beacons) {
-            Log.d(TAG, "$beacon about ${beacon.distance} meters away")
+            // Log.d(TAG, "$beacon about ${beacon.distance} meters away")
             Encounter.beaconDetected(beacon.id2.toString(), beacon.id3.toString())
         }
     }

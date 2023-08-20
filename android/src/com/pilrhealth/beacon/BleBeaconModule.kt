@@ -11,6 +11,7 @@ package com.pilrhealth.beacon
 
 import android.os.Build
 import androidx.annotation.RequiresApi
+import com.pilrhealth.EmaMessageQueue
 import org.appcelerator.kroll.KrollModule
 import org.appcelerator.kroll.KrollDict
 import org.appcelerator.kroll.annotations.Kroll
@@ -44,11 +45,15 @@ class BleBeaconModule: KrollModule() {
 			BeaconDetector().start("onAppCreate")
 		}
 	}
+
+	val messageQueue = EmaMessageQueue("ble.event", this)
+
 	init { Log.d(LCAT, "DEBUG>>> module created") }
 
 	@Kroll.method
 	fun startBeaconDetection() {
 		Log.e(LCAT, "starting detection")
+		Encounter.messageQueue = messageQueue
 		return BeaconDetector().start("startBeaconDetection")
 	}
 
@@ -58,6 +63,9 @@ class BleBeaconModule: KrollModule() {
 		Encounter.Companion.friendList = str
 		Log.e(LCAT, "DEBUG>>> friendList = '${Encounter.Companion.friendList}'")
 	}
+
+	@Kroll.method
+	fun fetchEvents() = messageQueue.fetchMessages()
 
 	//// test app methods - TODO: delete
 

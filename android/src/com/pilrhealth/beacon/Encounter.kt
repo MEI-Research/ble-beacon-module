@@ -8,10 +8,12 @@ import android.content.Intent
 import android.os.Build
 import android.util.Log
 import androidx.annotation.RequiresApi
+import com.pilrhealth.EmaMessageQueue
 import com.pilrhealth.PersistedProperty
 import com.pilrhealth.persistedLong
 import org.appcelerator.titanium.TiApplication
 import java.util.Date
+import kotlin.math.sqrt
 
 private const val TAG = "Encounter"
 private const val MAJOR_ID = "MAJOR_ID"
@@ -30,6 +32,13 @@ data class Encounter private constructor(
     var startedAt: Long = -1
     var lastDetectedAt: Long = startedAt
     var updateScheduledAt: Long = Long.MAX_VALUE
+
+    // Stats
+    var numDeltaT = -1
+    var maxDeltaT = -1L
+    var sumDeltaT = 0.0
+    var sumDeltaT2 = 0.0
+
     val expiresAt get() =
         lastDetectedAt + if (state == EncounterState.ACTUAL) actualEncounterTimeout else transientEncounterTimeout
 
@@ -37,6 +46,8 @@ data class Encounter private constructor(
 
     companion object {
         private val encounterMap = mutableMapOf<Pair<String,String>, Encounter>()
+
+        var messageQueue : EmaMessageQueue? = null
 
         var transientEncounterTimeout: Long by persistedLong(2 * 60 * 1000)
         var actualEncounterTimeout:    Long by persistedLong(3 * 60 * 1000)
@@ -92,6 +103,13 @@ data class Encounter private constructor(
     }
 
     fun onDetected(now: Long) {
+        numDeltaT += 1
+        if (numDeltaT > 0) {
+            val deltaT = now - lastDetectedAt
+            sumDeltaT += deltaT
+            sumDeltaT2 += deltaT * deltaT
+            maxDeltaT = maxDeltaT.coerceAtLeast(deltaT)
+        }
         lastDetectedAt = now
         scheduleNextUpdate()
     }
@@ -115,17 +133,41 @@ data class Encounter private constructor(
         startedAt = now
         lastDetectedAt = now
         state = EncounterState.TRANSIENT
+        numDeltaT = -1
+        maxDeltaT = -1
+        sumDeltaT = 0.0
+        sumDeltaT2 = 0.0
     }
 
-    fun expire(_now: Long) {
+    fun expire(now: Long) {
         Log.i(TAG, "Expire: $this")
+        val isActual = state == EncounterState.ACTUAL
         state = EncounterState.INACTIVE
+        if (!isActual) {
+            messageQueue?.sendMessage(toMap(false) + mapOf(
+                "event_type" to "start_transient_encounter",
+                "timestamp" to EmaMessageQueue.encodeTimestamp(startedAt),
+            ))
+        }
+        messageQueue?.sendMessage(toMap() + mapOf(
+            "event_type" to (
+                    if (isActual)
+                        "end_actual_encounter"
+                    else
+                        "end_transient_encounter"),
+            "timestamp" to EmaMessageQueue.encodeTimestamp(now),
+            "last_detected" to EmaMessageQueue.encodeTimestamp(lastDetectedAt),
+        ))
     }
 
     fun becomeActual(_now: Long) {
         Log.i(TAG, "Become actual: $this")
         state = EncounterState.ACTUAL
         EncounterNotifier.sendNotification(this)
+        messageQueue?.sendMessage(toMap() + mapOf(
+            "event_type" to  "start_actual_encounter",
+            "timestamp" to EmaMessageQueue.encodeTimestamp(startedAt),
+        ))
     }
 
     fun scheduleNextUpdate() {
@@ -147,6 +189,28 @@ data class Encounter private constructor(
         val am = context.getSystemService(TiApplication.ALARM_SERVICE) as AlarmManager
         am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, updateAt, pendingIntent)
         updateScheduledAt = updateAt
+    }
+
+
+    fun toMap(includeStats: Boolean = true): Map<String, Any> {
+        val result = mutableMapOf(
+            "friend_name" to name,
+            "kontakt_beacon_id" to  tag,
+            "min_duration_secs" to  minimumEncounterDuration / 1e3,
+            "actual_enc_timeout_secs" to  actualEncounterTimeout / 1e3,
+            "transient_enc_timeout_secs" to  transientEncounterTimeout / 1e3,
+        )
+        if (includeStats) {
+            result.put("max_detect_event_delta_t", maxDeltaT)
+            result.put("num_events", numDeltaT)
+            if (numDeltaT > 0) {
+                val mean = sumDeltaT / 1e3 / numDeltaT
+                val std = sqrt(sumDeltaT2 / 1e6 / numDeltaT - mean * mean)
+                result.put("avg_detect_event_delta_t", mean);
+                result.put("sd_detect_event_delta_t", std);
+            }
+        }
+        return result
     }
 
     override fun toString(): String {

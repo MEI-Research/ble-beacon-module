@@ -3,5 +3,8 @@ dependencies {
     implementation "org.altbeacon:android-beacon-library:2.19.5"
     // 2.19.6 causes errors when building the app, even though the module builds without error.
     // This is why we use fixed versions instead of "2+" like the reference app
-    // implementation "org.altbeacon:android-beacon-library:2.19.6"
+
+    // Tape persistent queue for service messages
+    implementation 'com.squareup.tape2:tape:2.0.0-beta1'
+
 }
