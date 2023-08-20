@@ -52,7 +52,7 @@ object EncounterNotifier {
         var builder = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(icon)
             .setContentTitle("encounter title")
-            .setContentText("Start ${encounter.beacon}")
+            .setContentText("Start ${encounter}")
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setGroupSummary(true)
             .setGroup(GROUP_NAME)

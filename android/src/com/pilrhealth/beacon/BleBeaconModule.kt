@@ -37,25 +37,27 @@ class BleBeaconModule: KrollModule() {
 
 		@Kroll.onAppCreate
 		fun onAppCreate(app: TiApplication?) {
+			// THis log message doesn't work for some reason, but this method gets called.
+			// The foreground service will cause the TiApplication to be created and this is called.
 			Log.d(LCAT, "inside onAppCreate")
 			// put module init code that needs to run when the application is created
-			BeaconDetector().start()
+			BeaconDetector().start("onAppCreate")
 		}
 	}
-
-	@Kroll.method
-	fun addFriend(name: String, majorId: String, minorId: String) {
-		Encounter.addNamedBeacon(name, majorId, minorId)
-	}
-
-	// Methods
+	init { Log.d(LCAT, "DEBUG>>> module created") }
 
 	@Kroll.method
 	fun startBeaconDetection() {
 		Log.e(LCAT, "starting detection")
-		return BeaconDetector().start()
+		return BeaconDetector().start("startBeaconDetection")
 	}
 
+	@Kroll.method
+	fun setFriendList(str: String) {
+		Log.e(LCAT, "DEBUG>>> setting friendList: '$str'")
+		Encounter.Companion.friendList = str
+		Log.e(LCAT, "DEBUG>>> friendList = '${Encounter.Companion.friendList}'")
+	}
 
 	//// test app methods - TODO: delete
 

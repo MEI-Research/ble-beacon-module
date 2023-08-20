@@ -16,12 +16,21 @@ import org.altbeacon.beacon.Identifier
 import org.altbeacon.beacon.Region
 import org.appcelerator.titanium.TiApplication
 import org.appcelerator.titanium.util.TiRHelper
+import java.lang.Exception
 
 const val KONTAKT_BEACON_ID = "F7826DA6-4FA2-4E98-8024-BC5B71E0893E"
 
 private const val TAG = "BeaconDetector"
 
 
+/**
+ * Provide a facade to the Android Beacon Library to start the detection service.
+ * # IMPORTANT NOTE
+ *
+ * This module is a slightly modfied version of the Android Beacon Library Reference app.
+ * https://github.com/davidgyoung/android-beacon-library-reference-kotlin/blob/master/app/src/main/java/org/altbeacon/beaconreference/BeaconReferenceApplication.kt0
+ * Please maintain that. Updates to processing beacon detctions should be in Encounter.
+ */
 @RequiresApi(Build.VERSION_CODES.O)
 class BeaconDetector() {
     companion object {
@@ -34,9 +43,16 @@ class BeaconDetector() {
     private val context: Context = TiApplication.getInstance()
     private val debug = false
 
-    private var started = false;
-    fun start() {
-        Log.e(TAG, "Starting EMA beacon detection")
+    private var started = false
+    // private var started by persistedBoolean(false)
+    fun start(whence: String) {
+        Log.e(TAG, "Starting EMA beacon detection via $whence, previously started=$started")
+
+        // This line is needed so that the friends list is loaded (by side-effect) after the
+        // application has been killed and the service restarts.
+        val friends = Encounter.friendList
+        Log.d(TAG, "friendlist=$friends")
+
         if (started) {
             return
         }
@@ -70,21 +86,27 @@ class BeaconDetector() {
         beaconManager.beaconParsers.add(parser)
 
 
-        setupForegroundService()
-        beaconManager.setEnableScheduledScanJobs(false);
-        beaconManager.setBackgroundBetweenScanPeriod(betweenScanPeriod);
-        beaconManager.setBackgroundScanPeriod(scanPeriod);
+        try {
+            setupForegroundService()
+            beaconManager.setEnableScheduledScanJobs(false);
+            beaconManager.setBackgroundBetweenScanPeriod(betweenScanPeriod);
+            beaconManager.setBackgroundScanPeriod(scanPeriod);
 
-        region = Region("kontakt", Identifier.parse(KONTAKT_BEACON_ID), null, null)
-        beaconManager.startMonitoring(region)
-        beaconManager.startRangingBeacons(region)
+            region = Region("kontakt", Identifier.parse(KONTAKT_BEACON_ID), null, null)
+            beaconManager.startMonitoring(region)
+            beaconManager.startRangingBeacons(region)
 
-        // Ranging callbacks will drop out if no beacons are detected
-        // Monitoring callbacks will be delayed by up to 25 minutes on region exit
-        // beaconManager.setIntentScanningStrategyEnabled(true)
+            // Ranging callbacks will drop out if no beacons are detected
+            // Monitoring callbacks will be delayed by up to 25 minutes on region exit
+            // beaconManager.setIntentScanningStrategyEnabled(true)
 
-        val regionViewModel = BeaconManager.getInstanceForApplication(context).getRegionViewModel(region)
-        regionViewModel.rangedBeacons.observeForever( centralRangingObserver)
+            val regionViewModel =
+                BeaconManager.getInstanceForApplication(context).getRegionViewModel(region)
+            regionViewModel.rangedBeacons.observeForever(centralRangingObserver)
+        }
+        catch (e: Exception) {
+            Log.e(TAG, "Service already started--hopefully", e)
+        }
 
         // The code below will start "monitoring" for beacons matching the region definition below
         // the region definition is a wildcard that matches all beacons regardless of identifiers.
@@ -112,7 +134,7 @@ class BeaconDetector() {
         //val intent = Intent(context, BeaconReceiver::class.java)
         val intent = context.packageManager.getLaunchIntentForPackage(context.packageName)
         if (intent == null) {
-           throw IllegalStateException("Can't create launch intent for ${context.packageName}")
+            throw IllegalStateException("Can't create launch intent for ${context.packageName}")
         }
         val pendingIntent =
             PendingIntent.getBroadcast(context, 1, intent, PendingIntent.FLAG_IMMUTABLE)
@@ -126,18 +148,5 @@ class BeaconDetector() {
         builder.setChannelId(channel.getId());
         BeaconManager.getInstanceForApplication(context)
             .enableForegroundServiceScanning(builder.build(), 456);
-    }
-
-    private fun allPermissionsGranted(context: Context, backgroundAccessRequested: Boolean): Boolean {
-        val permissionsHelper = PermissionsHelper(context)
-        val permissionsGroups = permissionsHelper.beaconScanPermissionGroupsNeeded(backgroundAccessRequested)
-        for (permissionsGroup in permissionsGroups) {
-            for (permission in permissionsGroup) {
-                if (!permissionsHelper.isPermissionGranted(permission)) {
-                    return false
-                }
-            }
-        }
-        return true
     }
 }

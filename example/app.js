@@ -26,14 +26,21 @@ console.error("DEBUG>>>>> HERE");
 function startBLE() {
     console.error('starting BLE');
     Ti.Android.requestPermissions(
-        ['android.permission.ACCESS_COARSE_LOCATION', 'android.permission.ACCESS_FINE_LOCATION'],
+        ['android.permission.ACCESS_COARSE_LOCATION',
+         'android.permission.ACCESS_FINE_LOCATION'],
         e => {
             Ti.Android.requestPermissions(
-                ['android.permission.ACCESS_BACKGROUND_LOCATION'], e => {
+                ['android.permission.ACCESS_BACKGROUND_LOCATION'],
+                e => {
                     if (e.success) {
                         Ti.Android.requestPermissions(
-                            ['android.permission.BLUETOOTH_SCAN', 'android.permission.BLUETOOTH_CONNECT'], e => {
-                                ble_beacon.addFriend('Bacchus', '51166', '48165');
+                            ['android.permission.BLUETOOTH_SCAN',
+                             'android.permission.BLUETOOTH_CONNECT',
+                             'android.permission.POST_NOTIFICATIONS',
+                            ],
+                            e => {
+                                //ble_beacon.addFriend('Bacchus', '51166', '48165');
+                                ble_beacon.setFriendList('foo-0-0-footag, Bacchus-51166-48165');
                                 ble_beacon.startBeaconDetection();
                             });
                     }
