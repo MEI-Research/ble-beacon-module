@@ -19,7 +19,7 @@ private const val TAG = "Encounter"
 private const val MAJOR_ID = "MAJOR_ID"
 private const val MINOR_ID = "MINOR_ID"
 
-enum class EncounterState { INACTIVE, TRANSIENT, ACTUAL }
+enum class EncounterStatus { INACTIVE, TRANSIENT, ACTUAL }
 
 @RequiresApi(api = Build.VERSION_CODES.O)
 data class Encounter private constructor(
@@ -28,7 +28,7 @@ data class Encounter private constructor(
     var name: String,
     var tag: String,
 ) {
-    var state: EncounterState = EncounterState.INACTIVE
+    var status: EncounterStatus = EncounterStatus.INACTIVE
     var startedAt: Long = -1
     var lastDetectedAt: Long = startedAt
     var updateScheduledAt: Long = Long.MAX_VALUE
@@ -40,7 +40,7 @@ data class Encounter private constructor(
     var sumDeltaT2 = 0.0
 
     val expiresAt get() =
-        lastDetectedAt + if (state == EncounterState.ACTUAL) actualEncounterTimeout else transientEncounterTimeout
+        lastDetectedAt + if (status == EncounterStatus.ACTUAL) actualEncounterTimeout else transientEncounterTimeout
 
     val actualAt get() = startedAt + minimumEncounterDuration
 
@@ -65,14 +65,12 @@ data class Encounter private constructor(
                                 minor_optTag.split(Regex("-"), 2)
                             else
                                 listOf(minor_optTag, "$major-$minor_optTag")
-                        val encounter = encounterMap.get(Pair(major,minor))
-                        if (encounter == null) {
-                            encounterMap[Pair(major,minor)] = Encounter(major, minor, name, tag)
-                        }
-                        else {
-                            encounter.name = name
-                            encounter.tag = tag
-                        }
+                        val encounter =
+                            encounterMap.getOrPut(Pair(major,minor), { Encounter(major, minor, name, tag) })
+                        encounter.name = name
+                        encounter.tag = tag
+                        encounter.restoreEncounterState()
+                        encounter.scheduleNextUpdate()
                     }
                     Log.d(TAG, "beaconMap=$encounterMap")
                     str
@@ -87,18 +85,20 @@ data class Encounter private constructor(
                 Log.i(TAG, "Ignoring unknown beacon $majorid-$minorid")
                 return
             }
-            if (encounter.state == EncounterState.INACTIVE) {
+            if (encounter.status == EncounterStatus.INACTIVE) {
                 encounter.becomeTransient(now)
                 // DEBUG - no commit
                 //EncounterNotifier.sendNotification(encounter)
             }
             encounter.onDetected(now)
+            encounter.saveEncounterState()
         }
 
         fun updateEncounterForBeacon(majorId: String, minorId: String) = synchronized(encounterMap) {
             val encounter = encounterMap[majorId to minorId]
             Log.d(TAG, "updateEncounterForBeacon for $majorId-$minorId $encounter")
             encounter?.onScheduledUpdate(System.currentTimeMillis())
+            encounter?.saveEncounterState()
         }
     }
 
@@ -122,17 +122,18 @@ data class Encounter private constructor(
             expire(now)
             return
         }
-        if (state == EncounterState.TRANSIENT && now >= actualAt) {
+        if (status == EncounterStatus.TRANSIENT && now >= actualAt) {
             becomeActual(now)
         }
         scheduleNextUpdate()
+        saveEncounterState()
     }
 
     fun becomeTransient(now: Long) {
         Log.i(TAG, "become transient: $this")
         startedAt = now
         lastDetectedAt = now
-        state = EncounterState.TRANSIENT
+        status = EncounterStatus.TRANSIENT
         numDeltaT = -1
         maxDeltaT = -1
         sumDeltaT = 0.0
@@ -141,8 +142,8 @@ data class Encounter private constructor(
 
     fun expire(now: Long) {
         Log.i(TAG, "Expire: $this")
-        val isActual = state == EncounterState.ACTUAL
-        state = EncounterState.INACTIVE
+        val isActual = status == EncounterStatus.ACTUAL
+        status = EncounterStatus.INACTIVE
         if (!isActual) {
             messageQueue?.sendMessage(toMap(false) + mapOf(
                 "event_type" to "start_transient_encounter",
@@ -162,7 +163,7 @@ data class Encounter private constructor(
 
     fun becomeActual(_now: Long) {
         Log.i(TAG, "Become actual: $this")
-        state = EncounterState.ACTUAL
+        status = EncounterStatus.ACTUAL
         EncounterNotifier.sendNotification(this)
         messageQueue?.sendMessage(toMap() + mapOf(
             "event_type" to  "start_actual_encounter",
@@ -171,7 +172,10 @@ data class Encounter private constructor(
     }
 
     fun scheduleNextUpdate() {
-        val updateAt = if (state == EncounterState.ACTUAL) expiresAt else Math.min(expiresAt, actualAt)
+        if (status == EncounterStatus.INACTIVE) {
+            return
+        }
+        val updateAt = if (status == EncounterStatus.ACTUAL) expiresAt else Math.min(expiresAt, actualAt)
         if (updateAt > updateScheduledAt && updateScheduledAt > System.currentTimeMillis()) {
             // Log.d(TAG, "Earlier update already scheduled for $this")
             return
@@ -191,6 +195,27 @@ data class Encounter private constructor(
         updateScheduledAt = updateAt
     }
 
+    fun persistKey() = "Encounter-$majorId-$minorId"
+
+    fun saveEncounterState() {
+        TiApplication.getInstance().appProperties.setList( persistKey(), arrayOf(
+            status.name,
+            startedAt.toString(),
+            lastDetectedAt.toString())
+        )
+    }
+
+    fun restoreEncounterState() {
+        val strVals =
+            TiApplication.getInstance().appProperties.getList(persistKey(), Array(0, {""}))
+        Log.e(TAG, "DEBUG>>> restore ${persistKey()} -> ${strVals.toList()}")
+        if (strVals.size == 3) {
+            status = EncounterStatus.valueOf(strVals[0])
+            startedAt = strVals[1].toLong()
+            lastDetectedAt = strVals[2].toLong()
+            updateScheduledAt = Long.MAX_VALUE
+        }
+    }
 
     fun toMap(includeStats: Boolean = true): Map<String, Any> {
         val result = mutableMapOf(
@@ -214,7 +239,7 @@ data class Encounter private constructor(
     }
 
     override fun toString(): String {
-        return "Encounter(tag=$tag, state=$state, expy=${expiresAt/60000.0} actual=${actualAt/60000.0}"
+        return "Encounter(tag=$tag, state=$status, expy=${expiresAt/60000.0} actual=${actualAt/60000.0}"
     }
 }
 

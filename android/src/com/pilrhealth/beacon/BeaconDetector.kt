@@ -32,21 +32,20 @@ private const val TAG = "BeaconDetector"
  * Please maintain that. Updates to processing beacon detctions should be in Encounter.
  */
 @RequiresApi(Build.VERSION_CODES.O)
-class BeaconDetector() {
-    companion object {
-        var  betweenScanPeriod: Long = 30 * 1000
-        var scanPeriod: Long = 10 * 1000
-    }
+object BeaconDetector {
+    var betweenScanPeriod: Long = 30 * 1000
+    var scanPeriod: Long = 10 * 1000
 
-    lateinit var region: Region
+    //lateinit var region: Region
 
-    private val context: Context = TiApplication.getInstance()
     private val debug = false
 
     private var started = false
     // private var started by persistedBoolean(false)
     fun start(whence: String) {
         Log.e(TAG, "Starting EMA beacon detection via $whence, previously started=$started")
+
+        val context: Context = TiApplication.getInstance()
 
         // This line is needed so that the friends list is loaded (by side-effect) after the
         // application has been killed and the service restarts.
@@ -87,12 +86,12 @@ class BeaconDetector() {
 
 
         try {
-            setupForegroundService()
+            setupForegroundService(context)
             beaconManager.setEnableScheduledScanJobs(false);
             beaconManager.setBackgroundBetweenScanPeriod(betweenScanPeriod);
             beaconManager.setBackgroundScanPeriod(scanPeriod);
 
-            region = Region("kontakt", Identifier.parse(KONTAKT_BEACON_ID), null, null)
+            val region = Region("kontakt", Identifier.parse(KONTAKT_BEACON_ID), null, null)
             beaconManager.startMonitoring(region)
             beaconManager.startRangingBeacons(region)
 
@@ -122,7 +121,7 @@ class BeaconDetector() {
         }
     }
 
-    private fun setupForegroundService() {
+    private fun setupForegroundService(context: Context) {
         val builder = Notification.Builder(context, "BeaconReferenceApp")
         val notifIcon = try {
             TiRHelper.getApplicationResource("drawable.ic_launcher")

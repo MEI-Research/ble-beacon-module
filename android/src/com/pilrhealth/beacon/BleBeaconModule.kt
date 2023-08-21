@@ -42,7 +42,7 @@ class BleBeaconModule: KrollModule() {
 			// The foreground service will cause the TiApplication to be created and this is called.
 			Log.d(LCAT, "inside onAppCreate")
 			// put module init code that needs to run when the application is created
-			BeaconDetector().start("onAppCreate")
+			BeaconDetector.start("onAppCreate")
 		}
 	}
 
@@ -54,7 +54,7 @@ class BleBeaconModule: KrollModule() {
 	fun startBeaconDetection() {
 		Log.e(LCAT, "starting detection")
 		Encounter.messageQueue = messageQueue
-		return BeaconDetector().start("startBeaconDetection")
+		return BeaconDetector.start("startBeaconDetection")
 	}
 
 	@Kroll.method

@@ -11,6 +11,6 @@ private const val TAG = "BootupBroadcastReceiver"
 @RequiresApi(Build.VERSION_CODES.O)
 class BootupBroadcastReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context?, intent: Intent?) {
-        BeaconDetector().start("unknown")
+        BeaconDetector.start("unknown")
     }
 }
