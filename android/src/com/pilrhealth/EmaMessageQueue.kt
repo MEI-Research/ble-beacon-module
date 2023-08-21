@@ -13,7 +13,6 @@ import java.nio.charset.StandardCharsets
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
-import java.util.Date
 
 /**
  * Delivers message objects reliably to EMA
@@ -29,32 +28,24 @@ import java.util.Date
  * type Event = Record<string></string>,unknown> & { "type": string }
  * ```
  *
+ * @param eventName name for the event triggered when a message is sent
+ * implement a "@Kroll fetchMessages()" method that delegates to an EmaMessageQueue
+ *
  * See https://github.com/square/tape
  */
 @RequiresApi(api = Build.VERSION_CODES.O)
-class EmaMessageQueue(eventName: String, owner: KrollProxy) {
-    // Limit the size of the fetchMessages response
-    var max_fetch_bytes = 2 * 1024 * 1024
-    private val eventName: String
-    private val owner: KrollProxy
-    private var undeliveredMessages: QueueFile? = null
+class EmaMessageQueue(val eventName: String) {
+    var owner: KrollProxy? = null
 
-    /**
-     * @param eventName name for the event triggered when a message is sent
-     * @param owner - the KrollProxy (or KrollModule) that delivers Ti events. The owner should
-     * implement a "@Kroll fetchMessages()" method that delegates to an EmaMessageQueue
-     */
+    // Limit the size of the fetchMessages response
+    var maxFetchBytes = 2 * 1024 * 1024
+
+    var undeliveredMessages: QueueFile
     init {
-        Log.d(TAG, "created $eventName")
-        this.eventName = eventName
-        this.owner = owner
         val dir = TiApplication.getInstance().filesDir
         val file = File(dir, "queue-$eventName")
-        try {
-            undeliveredMessages = QueueFile.Builder(file).build()
-        } catch (e: IOException) {
-            e.printStackTrace()
-        }
+        undeliveredMessages = QueueFile.Builder(file).build()
+        Log.i(TAG, "$eventName, undeliveredMessages.count=${undeliveredMessages.size()}")
     }
 
     /**
@@ -67,26 +58,26 @@ class EmaMessageQueue(eventName: String, owner: KrollProxy) {
      *
      * TODO: If not all messages are returned, schedule an event to fire shortly.
      */
-    fun fetchMessages(): String {
-        Log.d(TAG, "fetchMessages: intitial count=" + undeliveredMessages!!.size())
+    fun fetchMessages(): String = synchronized(this) {
+        Log.d(TAG, "fetchMessages: initial count=" + undeliveredMessages.size())
         val result = StringBuffer("[")
-        while (result.length < max_fetch_bytes) {
+        while (result.length < maxFetchBytes) {
             try {
-                val bytes = undeliveredMessages!!.peek()
+                val bytes = undeliveredMessages.peek()
                 if (bytes == null) {
                     Log.d(TAG, "fetchMessages: no more queued")
                     break
                 }
                 if (result.length > 1) result.append(",")
                 result.append(String(bytes, StandardCharsets.UTF_8))
-                undeliveredMessages!!.remove()
+                undeliveredMessages.remove()
             } catch (e: Exception) {
                 Log.e(TAG, "cannot read undeliveredMessages", e)
                 break
             }
         }
         result.append("]")
-        Log.d(TAG, "fetchMessages: remaining count=" + undeliveredMessages!!.size())
+        Log.d(TAG, "fetchMessages: remaining count=" + undeliveredMessages.size())
         return result.toString()
     }
 
@@ -94,24 +85,25 @@ class EmaMessageQueue(eventName: String, owner: KrollProxy) {
      * Queue an message to send to EMA
      * @param message - JSON-encodable message. EMA will expect a 'type' field
      */
-    fun sendMessage(message: Map<String, Any?>) {
-        val messageEncoded = JSONObject(message).toString()
-        Log.d(TAG, "sendMessage: $message")
+    fun sendMessage(message: Map<String, Any?>) = synchronized(this) {
         try {
+            val messageEncoded = JSONObject(message).toString()
             sendEncodedMessage(messageEncoded)
-        } catch (e: IOException) {
-            e.printStackTrace()
+            Log.d(TAG, "sendMessage, undelivered message count=" + undeliveredMessages.size())
+        //} catch (e: IOException) {
+        } catch (e: Exception) {
+            Log.e(TAG, "sendEncodedMessage failed", e)
         }
-        Log.d(TAG, "sendMessage, undelivered message count=" + undeliveredMessages!!.size())
     }
 
     @Synchronized
     @Throws(IOException::class)
     private fun sendEncodedMessage(messageEncoded: String) {
-        undeliveredMessages!!.add(messageEncoded.toByteArray(StandardCharsets.UTF_8))
+        Log.d(TAG, "sendEncodedMessage($messageEncoded)")
+        undeliveredMessages.add(messageEncoded.toByteArray(StandardCharsets.UTF_8))
         // Eventually EMA will only need to call fetchMessages() on open, resume and when this event
         // is received. Or this module could detect open & resumes and fire the event..
-        val hasListener = owner.fireEvent(eventName, null)
+        val hasListener = owner?.fireEvent(eventName, null) ?: false
         if (!hasListener) {
             Log.d(TAG, "No listener for message: $messageEncoded")
         }
@@ -123,7 +115,7 @@ class EmaMessageQueue(eventName: String, owner: KrollProxy) {
         fun encodeTimestamp(millis: Long): String {
             val formatter = DateTimeFormatter
                 .ofPattern("yyyy-MM-dd'T'HH:mm:ssZ")
-                .withZone(ZoneId.systemDefault());
+                .withZone(ZoneId.systemDefault())
             val instant = Instant.ofEpochMilli(millis)
             return formatter.format(instant)
         }

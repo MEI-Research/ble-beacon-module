@@ -42,8 +42,9 @@ object BeaconDetector {
 
     private var started = false
     // private var started by persistedBoolean(false)
+
     fun start(whence: String) {
-        Log.e(TAG, "Starting EMA beacon detection via $whence, previously started=$started")
+        Log.e(TAG, "start via $whence, previously started=$started")
 
         val context: Context = TiApplication.getInstance()
 

@@ -46,14 +46,12 @@ class BleBeaconModule: KrollModule() {
 		}
 	}
 
-	val messageQueue = EmaMessageQueue("ble.event", this)
-
 	init { Log.d(LCAT, "DEBUG>>> module created") }
 
 	@Kroll.method
 	fun startBeaconDetection() {
 		Log.e(LCAT, "starting detection")
-		Encounter.messageQueue = messageQueue
+		Encounter.setKrollProxy(this)
 		return BeaconDetector.start("startBeaconDetection")
 	}
 
@@ -65,7 +63,40 @@ class BleBeaconModule: KrollModule() {
 	}
 
 	@Kroll.method
-	fun fetchEvents() = messageQueue.fetchMessages()
+	fun fetchEvents() = Encounter.messageQueue.fetchMessages()
+
+	/** This should be called when EMA logs out */
+	@Kroll.method()
+	fun clearAllEncounters() {
+		setFriendList("")
+	}
+
+	@set:Kroll.setProperty
+	var minDurationSecs: Long
+		get() {
+			return Encounter.minimumEncounterDuration / 1000
+		}
+		set(value) {
+			Encounter.minimumEncounterDuration = value * 1000
+		}
+
+	@set:Kroll.setProperty
+	var transientTimeoutSecs: Long
+		get() {
+			return Encounter.transientEncounterTimeout / 1000
+		}
+		set(value) {
+			Encounter.transientEncounterTimeout = value * 1000
+		}
+
+	@set:Kroll.setProperty
+	var actualTimeoutSecs: Long
+		get() {
+			return Encounter.actualEncounterTimeout / 1000
+		}
+		set(value) {
+			Encounter.actualEncounterTimeout = value * 1000
+		}
 
 	//// test app methods - TODO: delete
 

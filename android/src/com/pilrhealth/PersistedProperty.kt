@@ -24,18 +24,18 @@ class PersistedProperty<T>(
     var key: String? = null
     var value: T = defaultValue // willUpdate(null, defaultValue)
 
-    operator fun getValue(thisRef: Any?, property: KProperty<*>): T {
-        ensureInit(thisRef, property)
+    operator fun getValue(thisRef: Any?, property: KProperty<*>): T = synchronized(this) {
+        ensureInit("get", thisRef, property)
         return value
     }
 
-    operator fun setValue(thisRef: Any?, property: KProperty<*>, value: T) {
-        ensureInit(thisRef, property)
+    operator fun setValue(thisRef: Any?, property: KProperty<*>, value: T) = synchronized(this) {
+        ensureInit("set", thisRef, property)
         this.value = willUpdate(this.value, value)
         tiProperties().setString(key, intoString(value))
     }
 
-    private fun ensureInit(thisRef: Any?, property: KProperty<*>) {
+    private fun ensureInit(whence: String, thisRef: Any?, property: KProperty<*>) {
         if (key == null) {
             if (thisRef == null) {
                 throw IllegalStateException("No owner for property $property")
@@ -45,10 +45,10 @@ class PersistedProperty<T>(
             if (stringVal != null) {
                 value = willUpdate(this.value, fromString(stringVal))
             }
-            Log.d(TAG, "restored $key -> $value")
+            Log.d(TAG, "ensureInit via $whence $key -> $value (stringVal=$stringVal)")
         }
     }
 
-    private inline fun tiProperties(): TiProperties =
+    private fun tiProperties(): TiProperties =
         TiApplication.getInstance().getAppProperties()
 }

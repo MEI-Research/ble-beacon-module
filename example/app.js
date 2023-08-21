@@ -12,19 +12,8 @@ const ANDROID_PERMISSIONS = [
     'android.permission.BLUETOOTH_SCAN',
 ];
 
-
-// open a single window
-const win = Ti.UI.createWindow();
-const label = Ti.UI.createLabel();
-win.add(label);
-
-// TODO: write your module tests here
-Ti.API.info("module is => " + ble_beacon);
-
-console.error("DEBUG>>>>> HERE");
-
 function startBLE() {
-    console.error('starting BLE');
+    log('starting BLE');
     Ti.Android.requestPermissions(
         ['android.permission.ACCESS_COARSE_LOCATION',
          'android.permission.ACCESS_FINE_LOCATION'],
@@ -41,15 +30,23 @@ function startBLE() {
                             e => {
                                 //ble_beacon.addFriend('Bacchus', '51166', '48165');
                                 ble_beacon.startBeaconDetection();
-                                ble_beacon.setFriendList('foo-0-0-footag, Bacchus-51166-48165');
-                                ble_beacon.addEventListener('ble.event', e => {
-                                    console.error("GOT EVENT>>>>>>", e)
-                                    console.error("messages=", ble_beacon.fetchEvents())
+                                ble_beacon.addEventListener('ble.event', () => {
+                                    log("GOT EVENT ble.event");
+                                    fetchEvents();
                                 })
                             });
                     }
                 });
         });
+}
+
+function fetchEvents() {
+    const events = JSON.parse(ble_beacon.fetchEvents());
+    //if (events.length == 0)
+    //    return;
+    const formatted = JSON.stringify(events, undefined, 2);
+    log("messages=", formatted);
+    //log("messages=", ble_beacon.fetchEvents())
 }
 
 async function requestPermissions(permissions) {
@@ -58,39 +55,52 @@ async function requestPermissions(permissions) {
     })
 }
 
+Ti.App.addEventListener('resumed', fetchEvents);
 
-win.open().then(startBLE);
-//win.open().then(() => {
-    //console.error("DEBUG>>>>> HERE2");
-//
-    //const what = Ti.Android.requestPermissions(ANDROID_PERMISSIONS, result => {
-        //console.error('got result2=', result)
-        //if (result.success) {
-            //console.error('startinng2...')
-            //ble_beacon.startBeaconDetction();
-        //}
-    //});
-    //console.error('should have started, what=', what);
-   // 
-//});
+ble_beacon.setFriendList('foo-0-0-footag, Bacchus-51166-48165');
+ble_beacon.transientTimeoutSecs = 60;
+ble_beacon.actualTimeoutSecs = 60;
+ble_beacon.minDurationSecs = 60
 
-label.text = ble_beacon.example();
+////////////////////////////////////////
+//// boiler plate test stuff
 
-Ti.API.info("module exampleProp is => " + ble_beacon.exampleProp);
-ble_beacon.exampleProp = "This is a test value";
+let history = '';
+function log(...theArguments) {
+    // Stringify non-strings
+    let mappedArgs = theArguments.map((argument) => {
+        return (typeof argument === 'string') ? argument : JSON.stringify(argument, null, 2);
+    });
 
-if (Ti.Platform.name == "android") {
-	const proxy = ble_beacon.createExample({
-		message: "Creating an example Proxy",
-		backgroundColor: "red",
-		width: 100,
-		height: 100,
-		top: 100,
-		left: 150
-	});
+    const message = mappedArgs.join(' ');
+    const timestamp = new Date().toLocaleString('en-US', { hour12: false });
 
-	proxy.printMessage("Hello world!");
-	proxy.message = "Hi world!.  It's me again.";
-	proxy.printMessage("Hello world!");
-	win.add(proxy);
+    // Use error-level for production or they will not show in Xcode console
+    Ti.API[ENV_PROD ? 'error' : 'info'](message);
+
+    history = `${history} [${timestamp}] ${message}\n\n`;
+    consoleLabel.text = history;
+    consoleView.scrollToBottom()
 }
+
+const win = Ti.UI.createWindow();
+
+const consoleView = Ti.UI.createScrollView({
+	contentWidth: Ti.UI.FILL,
+	contentHeight: Ti.UI.SIZE
+})
+win.add(consoleView);
+const consoleLabel = Ti.UI.createLabel({
+	top: 10,
+	right: 10,
+	left: 10,
+
+	width: Ti.UI.FILL,
+	height: Ti.UI.SIZE,
+
+	font: {
+		fontFamily: 'Courier New'
+	}
+});
+consoleView.add(consoleLabel);
+win.open().then(startBLE);

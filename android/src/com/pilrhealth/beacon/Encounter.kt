@@ -11,6 +11,7 @@ import androidx.annotation.RequiresApi
 import com.pilrhealth.EmaMessageQueue
 import com.pilrhealth.PersistedProperty
 import com.pilrhealth.persistedLong
+import org.appcelerator.kroll.KrollProxy
 import org.appcelerator.titanium.TiApplication
 import java.util.Date
 import kotlin.math.sqrt
@@ -47,7 +48,10 @@ data class Encounter private constructor(
     companion object {
         private val encounterMap = mutableMapOf<Pair<String,String>, Encounter>()
 
-        var messageQueue : EmaMessageQueue? = null
+        val messageQueue = EmaMessageQueue("ble.event")
+        fun setKrollProxy(proxy: KrollProxy) {
+           messageQueue.owner = proxy
+        }
 
         var transientEncounterTimeout: Long by persistedLong(2 * 60 * 1000)
         var actualEncounterTimeout:    Long by persistedLong(3 * 60 * 1000)
@@ -118,11 +122,14 @@ data class Encounter private constructor(
         Log.d(TAG, "onScheduledUpate: expired=${now >= expiresAt}, actual=${now >= actualAt}, now=$now, $this")
         updateScheduledAt = Long.MAX_VALUE
 
-        if (now >= expiresAt) {
-            expire(now)
+        if (status == EncounterStatus.INACTIVE) {
             return
         }
-        if (status == EncounterStatus.TRANSIENT && now >= actualAt) {
+
+        if (now >= expiresAt) {
+            expire(now)
+        }
+        else if (status == EncounterStatus.TRANSIENT && now >= actualAt) {
             becomeActual(now)
         }
         scheduleNextUpdate()
@@ -145,17 +152,18 @@ data class Encounter private constructor(
         val isActual = status == EncounterStatus.ACTUAL
         status = EncounterStatus.INACTIVE
         if (!isActual) {
-            messageQueue?.sendMessage(toMap(false) + mapOf(
+            messageQueue.sendMessage(toMap(false) + mapOf(
                 "event_type" to "start_transient_encounter",
                 "timestamp" to EmaMessageQueue.encodeTimestamp(startedAt),
             ))
         }
-        messageQueue?.sendMessage(toMap() + mapOf(
+        messageQueue.sendMessage(toMap() + mapOf(
             "event_type" to (
                     if (isActual)
                         "end_actual_encounter"
                     else
                         "end_transient_encounter"),
+            "started" to EmaMessageQueue.encodeTimestamp(startedAt),
             "timestamp" to EmaMessageQueue.encodeTimestamp(now),
             "last_detected" to EmaMessageQueue.encodeTimestamp(lastDetectedAt),
         ))
@@ -165,7 +173,7 @@ data class Encounter private constructor(
         Log.i(TAG, "Become actual: $this")
         status = EncounterStatus.ACTUAL
         EncounterNotifier.sendNotification(this)
-        messageQueue?.sendMessage(toMap() + mapOf(
+        messageQueue.sendMessage(toMap() + mapOf(
             "event_type" to  "start_actual_encounter",
             "timestamp" to EmaMessageQueue.encodeTimestamp(startedAt),
         ))
@@ -175,12 +183,18 @@ data class Encounter private constructor(
         if (status == EncounterStatus.INACTIVE) {
             return
         }
-        val updateAt = if (status == EncounterStatus.ACTUAL) expiresAt else Math.min(expiresAt, actualAt)
-        if (updateAt > updateScheduledAt && updateScheduledAt > System.currentTimeMillis()) {
+        val now = System.currentTimeMillis()
+        val updateAt =
+            if (status == EncounterStatus.ACTUAL) expiresAt else expiresAt.coerceAtMost(actualAt)
+        if (updateAt <= now) {
+            onScheduledUpdate(now)
+            return
+        }
+        if (updateAt >= updateScheduledAt && updateScheduledAt > now) {
             // Log.d(TAG, "Earlier update already scheduled for $this")
             return
         }
-        Log.i(TAG, "Schedule updateAt=${Date(updateAt)} for $this")
+        Log.i(TAG, "scheduleNextUpdate: updateAt=${Date(updateAt)} for $this")
         val context = TiApplication.getInstance().applicationContext
         val updateIntent =
             Intent(context, EncounterUpdateReceiver::class.java)
@@ -226,7 +240,7 @@ data class Encounter private constructor(
             "transient_enc_timeout_secs" to  transientEncounterTimeout / 1e3,
         )
         if (includeStats) {
-            result.put("max_detect_event_delta_t", maxDeltaT)
+            result.put("max_detect_event_delta_t", maxDeltaT / 1e3)
             result.put("num_events", numDeltaT)
             if (numDeltaT > 0) {
                 val mean = sumDeltaT / 1e3 / numDeltaT
