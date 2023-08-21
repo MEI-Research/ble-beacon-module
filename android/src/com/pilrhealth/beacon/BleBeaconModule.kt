@@ -11,7 +11,6 @@ package com.pilrhealth.beacon
 
 import android.os.Build
 import androidx.annotation.RequiresApi
-import com.pilrhealth.EmaMessageQueue
 import org.appcelerator.kroll.KrollModule
 import org.appcelerator.kroll.KrollDict
 import org.appcelerator.kroll.annotations.Kroll
@@ -70,6 +69,19 @@ class BleBeaconModule: KrollModule() {
 	fun clearAllEncounters() {
 		setFriendList("")
 	}
+
+	@set:Kroll.setProperty
+	var notificationTitle: String
+		get() { return EncounterNotifier.notificationTitle }
+		set(value) {
+			Log.d(LCAT, "set notificationTitle=$value")
+			EncounterNotifier.notificationTitle = value
+		}
+
+	@set:Kroll.setProperty
+	var notificationText: String
+		get() { return EncounterNotifier.notificationText }
+		set(value) { EncounterNotifier.notificationText = value }
 
 	@set:Kroll.setProperty
 	var minDurationSecs: Long

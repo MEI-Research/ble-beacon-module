@@ -11,8 +11,8 @@ import android.os.Build
 import android.util.Log
 import androidx.annotation.RequiresApi
 import androidx.core.app.NotificationCompat
+import com.pilrhealth.persistedString
 import org.appcelerator.titanium.TiApplication
-import org.appcelerator.titanium.util.TiRHelper
 
 private const val TAG = "EncounterNotifier"
 private const val CHANNEL_ID = "12"
@@ -22,6 +22,9 @@ private const val notificationId = 200001
 
 @RequiresApi(api = Build.VERSION_CODES.O)
 object EncounterNotifier {
+    var notificationTitle: String by persistedString("default title")
+    var notificationText: String by persistedString("default text")
+
     fun sendNotification(encounter: Encounter) {
         val context = TiApplication.getInstance()
 
@@ -51,8 +54,8 @@ object EncounterNotifier {
         )
         var builder = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(icon)
-            .setContentTitle("encounter title")
-            .setContentText("Start ${encounter}")
+            .setContentTitle(notificationTitle)
+            .setContentText(notificationText)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setGroupSummary(true)
             .setGroup(GROUP_NAME)

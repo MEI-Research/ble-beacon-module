@@ -61,6 +61,8 @@ ble_beacon.setFriendList('foo-0-0-footag, Bacchus-51166-48165');
 ble_beacon.transientTimeoutSecs = 60;
 ble_beacon.actualTimeoutSecs = 60;
 ble_beacon.minDurationSecs = 60
+ble_beacon.notificationTitle = "app.js customized title"
+ble_beacon.notificationText = "app.js customized text"
 
 ////////////////////////////////////////
 //// boiler plate test stuff

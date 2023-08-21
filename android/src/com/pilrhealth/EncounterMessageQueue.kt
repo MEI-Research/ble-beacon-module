@@ -34,7 +34,7 @@ import java.time.format.DateTimeFormatter
  * See https://github.com/square/tape
  */
 @RequiresApi(api = Build.VERSION_CODES.O)
-class EmaMessageQueue(val eventName: String) {
+class EncounterMessageQueue(val eventName: String) {
     var owner: KrollProxy? = null
 
     // Limit the size of the fetchMessages response
@@ -45,7 +45,7 @@ class EmaMessageQueue(val eventName: String) {
         val dir = TiApplication.getInstance().filesDir
         val file = File(dir, "queue-$eventName")
         undeliveredMessages = QueueFile.Builder(file).build()
-        Log.i(TAG, "$eventName, undeliveredMessages.count=${undeliveredMessages.size()}")
+        Log.i(TAG, "$eventName, init, undeliveredMessages.count=${undeliveredMessages.size()}")
     }
 
     /**
@@ -59,7 +59,7 @@ class EmaMessageQueue(val eventName: String) {
      * TODO: If not all messages are returned, schedule an event to fire shortly.
      */
     fun fetchMessages(): String = synchronized(this) {
-        Log.d(TAG, "fetchMessages: initial count=" + undeliveredMessages.size())
+        Log.d(TAG, "fetchMessages $eventName: initial count=" + undeliveredMessages.size())
         val result = StringBuffer("[")
         while (result.length < maxFetchBytes) {
             try {
@@ -110,7 +110,7 @@ class EmaMessageQueue(val eventName: String) {
     }
 
     companion object {
-        const val TAG = "EmaMessageQueue"
+        const val TAG = "EncounterMessageQueue"
 
         fun encodeTimestamp(millis: Long): String {
             val formatter = DateTimeFormatter

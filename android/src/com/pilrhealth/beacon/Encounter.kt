@@ -8,7 +8,7 @@ import android.content.Intent
 import android.os.Build
 import android.util.Log
 import androidx.annotation.RequiresApi
-import com.pilrhealth.EmaMessageQueue
+import com.pilrhealth.EncounterMessageQueue
 import com.pilrhealth.PersistedProperty
 import com.pilrhealth.persistedLong
 import org.appcelerator.kroll.KrollProxy
@@ -48,14 +48,14 @@ data class Encounter private constructor(
     companion object {
         private val encounterMap = mutableMapOf<Pair<String,String>, Encounter>()
 
-        val messageQueue = EmaMessageQueue("ble.event")
+        val messageQueue = EncounterMessageQueue("ble.event")
         fun setKrollProxy(proxy: KrollProxy) {
            messageQueue.owner = proxy
         }
 
         var transientEncounterTimeout: Long by persistedLong(2 * 60 * 1000)
-        var actualEncounterTimeout:    Long by persistedLong(3 * 60 * 1000)
-        var minimumEncounterDuration:  Long by persistedLong(3 * 60 * 1000)
+        var actualEncounterTimeout:    Long by persistedLong(10 * 60 * 1000)
+        var minimumEncounterDuration:  Long by persistedLong(5 * 60 * 1000)
         var friendList: String by PersistedProperty<String>( "", fromString={it},
             // update encounterMap whenever friendList is updated
             willUpdate={ _, str ->
@@ -137,7 +137,7 @@ data class Encounter private constructor(
     }
 
     fun becomeTransient(now: Long) {
-        Log.i(TAG, "become transient: $this")
+        Log.i(TAG, "new transient encounter: $this")
         startedAt = now
         lastDetectedAt = now
         status = EncounterStatus.TRANSIENT
@@ -154,7 +154,7 @@ data class Encounter private constructor(
         if (!isActual) {
             messageQueue.sendMessage(toMap(false) + mapOf(
                 "event_type" to "start_transient_encounter",
-                "timestamp" to EmaMessageQueue.encodeTimestamp(startedAt),
+                "timestamp" to EncounterMessageQueue.encodeTimestamp(startedAt),
             ))
         }
         messageQueue.sendMessage(toMap() + mapOf(
@@ -163,9 +163,9 @@ data class Encounter private constructor(
                         "end_actual_encounter"
                     else
                         "end_transient_encounter"),
-            "started" to EmaMessageQueue.encodeTimestamp(startedAt),
-            "timestamp" to EmaMessageQueue.encodeTimestamp(now),
-            "last_detected" to EmaMessageQueue.encodeTimestamp(lastDetectedAt),
+            "started" to EncounterMessageQueue.encodeTimestamp(startedAt),
+            "timestamp" to EncounterMessageQueue.encodeTimestamp(now),
+            "last_detected" to EncounterMessageQueue.encodeTimestamp(lastDetectedAt),
         ))
     }
 
@@ -175,7 +175,7 @@ data class Encounter private constructor(
         EncounterNotifier.sendNotification(this)
         messageQueue.sendMessage(toMap() + mapOf(
             "event_type" to  "start_actual_encounter",
-            "timestamp" to EmaMessageQueue.encodeTimestamp(startedAt),
+            "timestamp" to EncounterMessageQueue.encodeTimestamp(startedAt),
         ))
     }
 
