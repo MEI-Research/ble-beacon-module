@@ -1,13 +1,24 @@
 # EMA Beacon Detection
 
+## Build
+
+```bash
+cd android
+./build.sh
+````
+
 ## Testing
 
-The following command runs the example app which exercises all of the modules functionality.
+The following command builds the module and runs the app in `/examplei/app.js` which exercises all functionality.
 
 ```bash
 MY_DEVICE=25041JEGR20857
+cd android
 ti build --target device --log-level warn --platform android --sdk 12.2.0.v20230718101411 -C $MY_DEVICE
 ```
+
+-----------------------------
+*The rest is the auto-generated boiler-plate*
 
 # TiDev Titanium Mobile Module Project
 
@@ -23,7 +34,7 @@ ID can only be used once by all public modules in Titanium.
 
 1. Edit the `manifest` with the appropriate details about your module.
 2. Edit the `LICENSE` to add your license details.
-3. Place any assets (such as PNG files) that are required anywhere in the module folder.
+3. Place any assets (such jjjas PNG files) that are required anywhere in the module folder.
 4. Edit the `timodule.xml` and configure desired settings.
 5. Code and build.
 
