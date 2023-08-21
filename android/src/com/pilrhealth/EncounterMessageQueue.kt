@@ -83,17 +83,28 @@ class EncounterMessageQueue(val eventName: String) {
 
     /**
      * Queue an message to send to EMA
-     * @param message - JSON-encodable message. EMA will expect a 'type' field
+     * 'event_type' and 'timestamp' should always be set
+     * @param messageObj - JSON-encodable message. EMA will expect a 'type' field
      */
-    fun sendMessage(message: Map<String, Any?>) = synchronized(this) {
+    fun sendMessage(messageObj: Map<String, Any?>) = synchronized(this) {
         try {
-            val messageEncoded = JSONObject(message).toString()
+            val messageEncoded = JSONObject(messageObj).toString()
             sendEncodedMessage(messageEncoded)
             Log.d(TAG, "sendMessage, undelivered message count=" + undeliveredMessages.size())
         //} catch (e: IOException) {
         } catch (e: Exception) {
             Log.e(TAG, "sendEncodedMessage failed", e)
         }
+    }
+
+    fun appLog(message: String, vararg additionalData: Pair<String, Any?>) = synchronized(this) {
+       sendMessage(
+           mapOf(
+               "event_type" to "message",
+               "timestamp" to EncounterMessageQueue.encodeTimestamp(System.currentTimeMillis()),
+               "message" to message,
+               "more_data" to mapOf(*additionalData),
+           ))
     }
 
     @Synchronized

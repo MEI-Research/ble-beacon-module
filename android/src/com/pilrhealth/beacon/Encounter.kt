@@ -101,8 +101,15 @@ data class Encounter private constructor(
         fun updateEncounterForBeacon(majorId: String, minorId: String) = synchronized(encounterMap) {
             val encounter = encounterMap[majorId to minorId]
             Log.d(TAG, "updateEncounterForBeacon for $majorId-$minorId $encounter")
-            encounter?.onScheduledUpdate(System.currentTimeMillis())
-            encounter?.saveEncounterState()
+            if (encounter == null) {
+                messageQueue.appLog("update for unknown encounter",
+                    "beacon" to "$majorId-$minorId",
+                    "encounterMap" to encounterMap.toString(),
+                )
+                return
+            }
+            encounter.onScheduledUpdate(System.currentTimeMillis())
+            encounter.saveEncounterState()
         }
     }
 
@@ -222,7 +229,7 @@ data class Encounter private constructor(
     fun restoreEncounterState() {
         val strVals =
             TiApplication.getInstance().appProperties.getList(persistKey(), Array(0, {""}))
-        Log.e(TAG, "DEBUG>>> restore ${persistKey()} -> ${strVals.toList()}")
+        Log.d(TAG, "DEBUG>>> restore ${persistKey()} -> ${strVals.toList()}")
         if (strVals.size == 3) {
             status = EncounterStatus.valueOf(strVals[0])
             startedAt = strVals[1].toLong()
@@ -260,7 +267,7 @@ data class Encounter private constructor(
 @RequiresApi(api = Build.VERSION_CODES.O)
 class EncounterUpdateReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
-        Log.e("EncounterUpdateReceiver", "onReceive at ${intent.extras}")
+        Log.d("EncounterUpdateReceiver", "onReceive at ${intent.extras}")
         val majorId = intent.extras?.getString(MAJOR_ID) ?: return
         val minorId = intent.extras?.getString(MINOR_ID) ?: return
         Encounter.updateEncounterForBeacon(majorId, minorId)
