@@ -49,8 +49,11 @@ data class Encounter private constructor(
                 synchronized(encounterMap) {
                     Log.d(TAG, "setting friend list: '$str'")
                     for (friend in str.split(Regex(""",\s*"""))) {
-                        val (name, major, minor_optTag) =
-                            friend.split(Regex("-"), 3)
+                        val t = friend.split(Regex("-"), 3)
+                        if (t.size < 3) {
+                            continue
+                        }
+                        val (name, major, minor_optTag) = t
                         val (minor, tag) =
                             if (minor_optTag.contains("-"))
                                 minor_optTag.split(Regex("-"), 2)
