@@ -13,6 +13,7 @@ import java.nio.charset.StandardCharsets
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import java.util.Date
 
 /**
  * Delivers message objects reliably to EMA
@@ -92,7 +93,15 @@ object AppMessageQueue {
      */
     fun sendMessage(messageObj: Map<String, Any?>) = synchronized(this) {
         try {
-            val messageEncoded = JSONObject(messageObj).toString()
+            val json = JSONObject()
+            for ((key, value) in messageObj.entries) {
+                when (value) {
+                    is String, is Number, is Boolean -> json.put(key, value)
+                    null -> json.put(key, "(null)")
+                    else -> json.put(key, value.toString())
+                }
+            }
+            val messageEncoded = json.toString()
             sendEncodedMessage(messageEncoded)
             Log.d(TAG, "sendMessage, undelivered message count=" + undeliveredMessages.size())
         //} catch (e: IOException) {
