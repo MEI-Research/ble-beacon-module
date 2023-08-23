@@ -1,24 +1,16 @@
 package com.pilrhealth.beacon
 
-import android.app.AlarmManager
-import android.app.PendingIntent
-import android.content.BroadcastReceiver
-import android.content.Context
-import android.content.Intent
 import android.os.Build
 import android.util.Log
 import androidx.annotation.RequiresApi
-import com.pilrhealth.EncounterMessageQueue
+import com.pilrhealth.AppMessageQueue
 import com.pilrhealth.PersistedProperty
 import com.pilrhealth.persistedLong
-import org.appcelerator.kroll.KrollProxy
 import org.appcelerator.titanium.TiApplication
 import java.util.Date
 import kotlin.math.sqrt
 
 private const val TAG = "Encounter"
-private const val MAJOR_ID = "MAJOR_ID"
-private const val MINOR_ID = "MINOR_ID"
 
 enum class EncounterStatus { INACTIVE, TRANSIENT, ACTUAL }
 
@@ -47,11 +39,6 @@ data class Encounter private constructor(
 
     companion object {
         private val encounterMap = mutableMapOf<Pair<String,String>, Encounter>()
-
-        val messageQueue = EncounterMessageQueue("ble.event")
-        fun setKrollProxy(proxy: KrollProxy) {
-           messageQueue.owner = proxy
-        }
 
         var transientEncounterTimeout: Long by persistedLong(2 * 60 * 1000)
         var actualEncounterTimeout:    Long by persistedLong(10 * 60 * 1000)
@@ -102,7 +89,8 @@ data class Encounter private constructor(
             val encounter = encounterMap[majorId to minorId]
             Log.d(TAG, "updateEncounterForBeacon for $majorId-$minorId $encounter")
             if (encounter == null) {
-                messageQueue.appLog("update for unknown encounter",
+                AppMessageQueue.appLog(
+                    "update for unknown encounter",
                     "beacon" to "$majorId-$minorId",
                     "encounterMap" to encounterMap.toString(),
                 )
@@ -159,31 +147,39 @@ data class Encounter private constructor(
         val isActual = status == EncounterStatus.ACTUAL
         status = EncounterStatus.INACTIVE
         if (!isActual) {
-            messageQueue.sendMessage(toMap(false) + mapOf(
-                "event_type" to "start_transient_encounter",
-                "timestamp" to EncounterMessageQueue.encodeTimestamp(startedAt),
-            ))
+            AppMessageQueue.sendMessage(
+                toMap(false) + mapOf(
+                    "event_type" to "start_transient_encounter",
+                    "timestamp" to AppMessageQueue.encodeTimestamp(startedAt),
+                )
+            )
         }
-        messageQueue.sendMessage(toMap() + mapOf(
-            "event_type" to (
-                    if (isActual)
-                        "end_actual_encounter"
-                    else
-                        "end_transient_encounter"),
-            "started" to EncounterMessageQueue.encodeTimestamp(startedAt),
-            "timestamp" to EncounterMessageQueue.encodeTimestamp(now),
-            "last_detected" to EncounterMessageQueue.encodeTimestamp(lastDetectedAt),
-        ))
+        AppMessageQueue.sendMessage(
+            toMap() + mapOf(
+                "event_type" to (
+                        if (isActual)
+                            "end_actual_encounter"
+                        else
+                            "end_transient_encounter"),
+                "started" to AppMessageQueue.encodeTimestamp(startedAt),
+                // timestamp: estimated time beacon went away.
+                // Best guess = lastDetected + average_detection_interval / 2
+                "timestamp" to AppMessageQueue.encodeTimestamp(now),
+                "last_detected" to AppMessageQueue.encodeTimestamp(lastDetectedAt),
+            )
+        )
     }
 
     fun becomeActual(_now: Long) {
         Log.i(TAG, "Become actual: $this")
         status = EncounterStatus.ACTUAL
         EncounterNotifier.sendNotification(this)
-        messageQueue.sendMessage(toMap() + mapOf(
-            "event_type" to  "start_actual_encounter",
-            "timestamp" to EncounterMessageQueue.encodeTimestamp(startedAt),
-        ))
+        AppMessageQueue.sendMessage(
+            toMap() + mapOf(
+                "event_type" to "start_actual_encounter",
+                "timestamp" to AppMessageQueue.encodeTimestamp(startedAt),
+            )
+        )
     }
 
     fun scheduleNextUpdate() {
@@ -202,17 +198,7 @@ data class Encounter private constructor(
             return
         }
         Log.i(TAG, "scheduleNextUpdate: updateAt=${Date(updateAt)} for $this")
-        val context = TiApplication.getInstance().applicationContext
-        val updateIntent =
-            Intent(context, EncounterUpdateReceiver::class.java)
-                .putExtra(MAJOR_ID, majorId)
-                .putExtra(MINOR_ID, minorId)
-        val pendingIntent = PendingIntent.getBroadcast(
-            context, 0, updateIntent,
-            PendingIntent.FLAG_CANCEL_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
-        val am = context.getSystemService(TiApplication.ALARM_SERVICE) as AlarmManager
-        am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, updateAt, pendingIntent)
+        EncounterAlarms.scheduleAlarm(updateAt, majorId, minorId)
         updateScheduledAt = updateAt
     }
 
@@ -264,12 +250,3 @@ data class Encounter private constructor(
     }
 }
 
-@RequiresApi(api = Build.VERSION_CODES.O)
-class EncounterUpdateReceiver : BroadcastReceiver() {
-    override fun onReceive(context: Context, intent: Intent) {
-        Log.d("EncounterUpdateReceiver", "onReceive at ${intent.extras}")
-        val majorId = intent.extras?.getString(MAJOR_ID) ?: return
-        val minorId = intent.extras?.getString(MINOR_ID) ?: return
-        Encounter.updateEncounterForBeacon(majorId, minorId)
-    }
-}

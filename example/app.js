@@ -55,7 +55,10 @@ async function requestPermissions(permissions) {
     })
 }
 
-Ti.App.addEventListener('resumed', fetchEvents);
+Ti.App.addEventListener('resumed', () => {
+    log("scanStats=", ble_beacon.scanStats())
+    fetchEvents();
+});
 
 ble_beacon.setFriendList('foo-0-0-footag, Bacchus-51166-48165');
 ble_beacon.transientTimeoutSecs = 60;

@@ -11,6 +11,7 @@ package com.pilrhealth.beacon
 
 import android.os.Build
 import androidx.annotation.RequiresApi
+import com.pilrhealth.AppMessageQueue
 import org.appcelerator.kroll.KrollModule
 import org.appcelerator.kroll.KrollDict
 import org.appcelerator.kroll.annotations.Kroll
@@ -31,7 +32,7 @@ class BleBeaconModule: KrollModule() {
 		// Standard Debugging variables
 		private const val LCAT = "BleBeaconModule"
 		private val DBG = TiConfig.LOGD
-		
+
 		// You can define constants with @Kroll.constant, for example:
 		// @Kroll.constant private val EXTERNAL_NAME = "EXTERNAL_NAME"
 
@@ -45,12 +46,14 @@ class BleBeaconModule: KrollModule() {
 		}
 	}
 
-	init { Log.d(LCAT, "DEBUG>>> module created") }
+	init {
+		AppMessageQueue.appLog("BleBeaconModule created")
+	}
 
 	@Kroll.method
 	fun startBeaconDetection() {
 		Log.e(LCAT, "starting detection")
-		Encounter.setKrollProxy(this)
+		AppMessageQueue.owner = this
 		return BeaconDetector.start("startBeaconDetection")
 	}
 
@@ -62,7 +65,7 @@ class BleBeaconModule: KrollModule() {
 	}
 
 	@Kroll.method
-	fun fetchEvents() = Encounter.messageQueue.fetchMessages()
+	fun fetchEvents() = AppMessageQueue.fetchMessages()
 
 	/** This should be called when EMA logs out */
 	@Kroll.method()
@@ -72,7 +75,9 @@ class BleBeaconModule: KrollModule() {
 
 	@set:Kroll.setProperty
 	var notificationTitle: String
-		get() { return EncounterNotifier.notificationTitle }
+		get() {
+			return EncounterNotifier.notificationTitle
+		}
 		set(value) {
 			Log.d(LCAT, "set notificationTitle=$value")
 			EncounterNotifier.notificationTitle = value
@@ -80,8 +85,12 @@ class BleBeaconModule: KrollModule() {
 
 	@set:Kroll.setProperty
 	var notificationText: String
-		get() { return EncounterNotifier.notificationText }
-		set(value) { EncounterNotifier.notificationText = value }
+		get() {
+			return EncounterNotifier.notificationText
+		}
+		set(value) {
+			EncounterNotifier.notificationText = value
+		}
 
 	@set:Kroll.setProperty
 	var minDurationSecs: Long
@@ -110,6 +119,11 @@ class BleBeaconModule: KrollModule() {
 			Encounter.actualEncounterTimeout = value * 1000
 		}
 
+	@Kroll.method
+	fun scanStats(): KrollDict {
+		return KrollDict(BeaconDetector.scanTimes.stats())
+	}
+
 	//// test app methods - TODO: delete
 
 	@Kroll.method
@@ -117,7 +131,7 @@ class BleBeaconModule: KrollModule() {
 		Log.d(LCAT, "example() called")
 		return "hello world"
 	}
-	
+
 	@Kroll.method
 	fun testMethod(params: KrollDict) {
 		Log.d(LCAT, "testMethod() called")

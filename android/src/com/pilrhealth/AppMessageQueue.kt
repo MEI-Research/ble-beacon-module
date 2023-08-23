@@ -34,8 +34,11 @@ import java.time.format.DateTimeFormatter
  * See https://github.com/square/tape
  */
 @RequiresApi(api = Build.VERSION_CODES.O)
-class EncounterMessageQueue(val eventName: String) {
+object AppMessageQueue {
+    const val TAG = "EncounterMessageQueue"
+
     var owner: KrollProxy? = null
+    var eventName: String = "ble.event"
 
     // Limit the size of the fetchMessages response
     var maxFetchBytes = 2 * 1024 * 1024
@@ -45,7 +48,8 @@ class EncounterMessageQueue(val eventName: String) {
         val dir = TiApplication.getInstance().filesDir
         val file = File(dir, "queue-$eventName")
         undeliveredMessages = QueueFile.Builder(file).build()
-        Log.i(TAG, "$eventName, init, undeliveredMessages.count=${undeliveredMessages.size()}")
+        appLog("AppMessageQueue init",
+            "undelivered_message_count" to undeliveredMessages.size())
     }
 
     /**
@@ -93,7 +97,7 @@ class EncounterMessageQueue(val eventName: String) {
             Log.d(TAG, "sendMessage, undelivered message count=" + undeliveredMessages.size())
         //} catch (e: IOException) {
         } catch (e: Exception) {
-            Log.e(TAG, "sendEncodedMessage failed", e)
+            Log.e(TAG, "sendEncodedMessage failed, messageObj=$messageObj", e)
         }
     }
 
@@ -101,7 +105,7 @@ class EncounterMessageQueue(val eventName: String) {
        sendMessage(
            mapOf(
                "event_type" to "message",
-               "timestamp" to EncounterMessageQueue.encodeTimestamp(System.currentTimeMillis()),
+               "timestamp" to AppMessageQueue.encodeTimestamp(System.currentTimeMillis()),
                "message" to message,
                "more_data" to mapOf(*additionalData),
            ))
@@ -120,15 +124,11 @@ class EncounterMessageQueue(val eventName: String) {
         }
     }
 
-    companion object {
-        const val TAG = "EncounterMessageQueue"
-
-        fun encodeTimestamp(millis: Long): String {
-            val formatter = DateTimeFormatter
-                .ofPattern("yyyy-MM-dd'T'HH:mm:ssZ")
-                .withZone(ZoneId.systemDefault())
-            val instant = Instant.ofEpochMilli(millis)
-            return formatter.format(instant)
-        }
+    fun encodeTimestamp(millis: Long): String {
+        val formatter = DateTimeFormatter
+            .ofPattern("yyyy-MM-dd'T'HH:mm:ssZ")
+            .withZone(ZoneId.systemDefault())
+        val instant = Instant.ofEpochMilli(millis)
+        return formatter.format(instant)
     }
 }

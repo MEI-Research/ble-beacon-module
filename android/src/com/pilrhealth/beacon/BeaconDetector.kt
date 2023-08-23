@@ -9,6 +9,8 @@ import android.os.Build
 import android.util.Log
 import androidx.annotation.RequiresApi
 import androidx.lifecycle.Observer
+import com.pilrhealth.AppMessageQueue
+import com.pilrhealth.EventTimes
 import org.altbeacon.beacon.Beacon
 import org.altbeacon.beacon.BeaconManager
 import org.altbeacon.beacon.BeaconParser
@@ -36,6 +38,8 @@ object BeaconDetector {
     var betweenScanPeriod: Long = 30 * 1000
     var scanPeriod: Long = 10 * 1000
 
+    var scanTimes = EventTimes()
+
     //lateinit var region: Region
 
     private val debug = false
@@ -43,15 +47,21 @@ object BeaconDetector {
     private var started = false
     // private var started by persistedBoolean(false)
 
-    fun start(whence: String) {
-        Log.e(TAG, "start via $whence, previously started=$started")
+    init {
+        AppMessageQueue.appLog("$TAG created")
+    }
 
+    fun start(whence: String) {
         val context: Context = TiApplication.getInstance()
 
         // This line is needed so that the friends list is loaded (by side-effect) after the
         // application has been killed and the service restarts.
         val friends = Encounter.friendList
-        Log.d(TAG, "friendlist=$friends")
+        AppMessageQueue.appLog("$TAG start via $whence, previously started=$started",
+            "whence" to whence,
+            "previous_started" to started,
+            "friend_list" to Encounter.friendList.toString(),
+        )
 
         if (started) {
             return
@@ -115,7 +125,14 @@ object BeaconDetector {
     }
 
     val centralRangingObserver = Observer<Collection<Beacon>> { beacons ->
-        // Log.d(TAG, "Ranged: ${beacons.count()} beacons")
+        scanTimes.previousMillis = System.currentTimeMillis()
+        Log.d(TAG, "Ranged: ${beacons.count()} beacons, ${scanTimes.stats()}")
+        val threshold = scanTimes.meanDeltaMillis + 2* scanTimes.stdDeltaMillis.coerceAtLeast(
+            0 * 60 * 1000.0
+        )
+        if(scanTimes.previousDTMillis > threshold) {
+            AppMessageQueue.appLog("Long time since last scan ${scanTimes.stats()}")
+        }
         for (beacon: Beacon in beacons) {
             // Log.d(TAG, "$beacon about ${beacon.distance} meters away")
             Encounter.beaconDetected(beacon.id2.toString(), beacon.id3.toString())
