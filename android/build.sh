@@ -3,6 +3,7 @@
 TI_SDK_VERSION=12.1.2.GA
 JAVA_VERSION=17.0.7-amzn
 GITINFO=$( git describe --long --abbrev=6 --dirty=+ )
+BUILD_TIME=`date`
 
 expand-template ()
 {
@@ -23,7 +24,7 @@ echo '[mei] Building Android Plot Projects module via Titanium SDK'
 sdk use java $JAVA_VERSION
 
 expand-template ./manifest.template >manifest \
-  GITINFO TI_SDK_VERSION
+  GITINFO TI_SDK_VERSION BUILD_TIME
 
 #NODE_VERSION=14
 

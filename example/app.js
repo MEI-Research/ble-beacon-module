@@ -4,55 +4,57 @@
 // to users on how to use it by example.
 import ble_beacon  from 'com.pilrhealth.beacon';
 
-const ANDROID_PERMISSIONS = [
-    //'android.permission.BLUETOOTH_ADVERTISE',
-    'android.permission.BLUETOOTH_CONNECT',
-    'android.permission.ACCESS_COARSE_LOCATION',
-    'android.permission.ACCESS_FINE_LOCATION',
-    'android.permission.BLUETOOTH_SCAN',
-];
+async function startBLE() {
+    let ok = await requestPermissions([
+        'android.permission.ACCESS_COARSE_LOCATION',
+        'android.permission.ACCESS_FINE_LOCATION'
+    ]);
+    ok &&= await requestPermissions([
+        'android.permission.ACCESS_BACKGROUND_LOCATION'
+    ]);
+    ok &&= await requestPermissions([
+        'android.permission.BLUETOOTH_SCAN',
+        'android.permission.BLUETOOTH_CONNECT',
+        'android.permission.POST_NOTIFICATIONS',
+    ]);
+    if (ok) {
+        console.debug("app starting detction")
+        //ble_beacon.addFriend('Bacchus', '51166', '48165');
+        ble_beacon.setFriendList('foo-0-0-footag, Bacchus-51166-48165');
+        ble_beacon.betweenScanPeriod = 35 * 1000
+        ble_beacon.transientTimeoutSecs = 60;
+        ble_beacon.actualTimeoutSecs = 60;
+        ble_beacon.minDurationSecs = 60
+        ble_beacon.notificationTitle = "app.js customized title"
+        ble_beacon.notificationText = "app.js customized text"
+        ble_beacon.startBeaconDetection();
+    }
+} 
 
-function startBLE() {
-    log('starting BLE');
-    Ti.Android.requestPermissions(
-        ['android.permission.ACCESS_COARSE_LOCATION',
-         'android.permission.ACCESS_FINE_LOCATION'],
-        e => {
-            Ti.Android.requestPermissions(
-                ['android.permission.ACCESS_BACKGROUND_LOCATION'],
-                e => {
-                    if (e.success) {
-                        Ti.Android.requestPermissions(
-                            ['android.permission.BLUETOOTH_SCAN',
-                             'android.permission.BLUETOOTH_CONNECT',
-                             'android.permission.POST_NOTIFICATIONS',
-                            ],
-                            e => {
-                                //ble_beacon.addFriend('Bacchus', '51166', '48165');
-                                ble_beacon.startBeaconDetection();
-                                ble_beacon.addEventListener('ble.event', () => {
-                                    log("GOT EVENT ble.event");
-                                    fetchEvents();
-                                })
-                            });
-                    }
-                });
+async function requestPermissions(permissions) {
+    console.debug('request permissions', permissions);
+    return new Promise((resolve) => {
+        Ti.Android.requestPermissions(permissions, (result) => {
+            if (result.success) {
+                console.debug('got permission', result);
+                resolve(true);
+            } else {
+                console.error('Failed to get permission', permissions, result);
+                resolve(false);
+            }
         });
+    });
 }
+
+ble_beacon.addEventListener('ble.event', () => {
+    log("GOT EVENT ble.event");
+    fetchEvents();
+});
 
 function fetchEvents() {
     const events = JSON.parse(ble_beacon.fetchEvents());
-    //if (events.length == 0)
-    //    return;
     const formatted = JSON.stringify(events, undefined, 2);
     log("messages=", formatted);
-    //log("messages=", ble_beacon.fetchEvents())
-}
-
-async function requestPermissions(permissions) {
-    return new Promise(resolve => {
-        Ti.Android.requestPermissions(permissions, resolve)
-    })
 }
 
 Ti.App.addEventListener('resumed', () => {
@@ -60,12 +62,6 @@ Ti.App.addEventListener('resumed', () => {
     fetchEvents();
 });
 
-ble_beacon.setFriendList('foo-0-0-footag, Bacchus-51166-48165');
-ble_beacon.transientTimeoutSecs = 60;
-ble_beacon.actualTimeoutSecs = 60;
-ble_beacon.minDurationSecs = 60
-ble_beacon.notificationTitle = "app.js customized title"
-ble_beacon.notificationText = "app.js customized text"
 
 ////////////////////////////////////////
 //// boiler plate test stuff

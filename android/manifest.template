@@ -18,3 +18,4 @@ platform: android
 minsdk: 12.1.1.GA
 
 gitinfo: ${GITINFO}
+build-time: ${BUILD_TIME}

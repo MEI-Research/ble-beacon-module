@@ -13,17 +13,18 @@ import java.nio.charset.StandardCharsets
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
-import java.util.Date
 
 /**
- * Delivers message objects reliably to EMA
+ * Delivers message objects reliably to the app.
  *
  * The message is an JSON object with a "type" property.  Type 'message' is reserved for
  * app_log entries. (See EmaLog).
  *
- * Using Titanium properties to queue messages can exhaust memory if messages are generated in
- * background for a long time without the app fetching them.  This module will limit the memory used
- * to `max_fetch_bytes`.
+ * Long-running background operation using Titanium properties to queue messages will eventually
+ * exhaust memory if the app is not started.
+ *
+ * This module appends to a queue backed by a file. Also, fetchMessages() returns batches
+ * of no more than `max_fetch_bytes`.
  *
  * ```typescript
  * type Event = Record<string></string>,unknown> & { "type": string }
@@ -67,23 +68,33 @@ object AppMessageQueue {
         Log.d(TAG, "fetchMessages $eventName: initial count=" + undeliveredMessages.size())
         val result = StringBuffer("[")
         while (result.length < maxFetchBytes) {
-            try {
-                val bytes = undeliveredMessages.peek()
-                if (bytes == null) {
-                    Log.d(TAG, "fetchMessages: no more queued")
-                    break
-                }
-                if (result.length > 1) result.append(",")
-                result.append(String(bytes, StandardCharsets.UTF_8))
-                undeliveredMessages.remove()
-            } catch (e: Exception) {
-                Log.e(TAG, "cannot read undeliveredMessages", e)
+            val nextMessage = nextMessageString()
+            if (nextMessage == null) {
                 break
             }
+            if (result.length > 1) result.append(",")
+            result.append(nextMessage)
         }
         result.append("]")
         Log.d(TAG, "fetchMessages: remaining count=" + undeliveredMessages.size())
         return result.toString()
+    }
+
+    fun fetchNextMessage(): JSONObject? = nextMessageString()?.let { JSONObject(it) }
+
+    fun nextMessageString(): String? = synchronized(this) {
+        try {
+            val bytes = undeliveredMessages.peek()
+            if (bytes == null) {
+                Log.d(TAG, "fetchMessages: no more queued")
+                return null
+            }
+            undeliveredMessages.remove()
+            return String(bytes, StandardCharsets.UTF_8)
+        } catch (e: Exception) {
+            Log.e(TAG, "cannot read undeliveredMessages", e)
+            return null
+        }
     }
 
     /**

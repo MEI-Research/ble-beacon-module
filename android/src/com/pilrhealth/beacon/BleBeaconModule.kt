@@ -18,6 +18,7 @@ import org.appcelerator.kroll.annotations.Kroll
 import org.appcelerator.kroll.common.Log
 import org.appcelerator.kroll.common.TiConfig
 import org.appcelerator.titanium.TiApplication
+import org.json.JSONObject
 
 @RequiresApi(Build.VERSION_CODES.O)
 @Kroll.module(name = "BleBeacon", id = "com.pilrhealth.beacon")
@@ -42,7 +43,7 @@ class BleBeaconModule: KrollModule() {
 			// The foreground service will cause the TiApplication to be created and this is called.
 			Log.d(LCAT, "inside onAppCreate")
 			// put module init code that needs to run when the application is created
-			BeaconDetector.start("onAppCreate")
+			//BeaconDetector.start("onAppCreate")
 		}
 	}
 
@@ -58,14 +59,18 @@ class BleBeaconModule: KrollModule() {
 	}
 
 	@Kroll.method
-	fun setFriendList(str: String) {
-		Log.e(LCAT, "DEBUG>>> setting friendList: '$str'")
-		Encounter.Companion.friendList = str
-		Log.e(LCAT, "DEBUG>>> friendList = '${Encounter.Companion.friendList}'")
-	}
+	fun fetchEvents() = AppMessageQueue.fetchMessages()
 
 	@Kroll.method
-	fun fetchEvents() = AppMessageQueue.fetchMessages()
+	fun fetchNextMessage(): KrollDict? =
+		AppMessageQueue.fetchNextMessage()?.let { KrollDict(it) }
+
+
+	@Kroll.method
+	fun setFriendList(str: String) {
+		Encounter.friendList = str
+		Log.i(LCAT, "friendList = '${Encounter.friendList}'")
+	}
 
 	/** This should be called when EMA logs out */
 	@Kroll.method()
@@ -74,32 +79,10 @@ class BleBeaconModule: KrollModule() {
 	}
 
 	@set:Kroll.setProperty
-	var notificationTitle: String
-		get() {
-			return EncounterNotifier.notificationTitle
-		}
-		set(value) {
-			Log.d(LCAT, "set notificationTitle=$value")
-			EncounterNotifier.notificationTitle = value
-		}
+	var notificationTitle: String by EncounterNotifier::notificationTitle
 
 	@set:Kroll.setProperty
-	var notificationText: String
-		get() {
-			return EncounterNotifier.notificationText
-		}
-		set(value) {
-			EncounterNotifier.notificationText = value
-		}
-
-	@set:Kroll.setProperty
-	var minDurationSecs: Long
-		get() {
-			return Encounter.minimumEncounterDuration / 1000
-		}
-		set(value) {
-			Encounter.minimumEncounterDuration = value * 1000
-		}
+	var notificationText: String by EncounterNotifier::notificationText
 
 	@set:Kroll.setProperty
 	var transientTimeoutSecs: Long
@@ -119,45 +102,16 @@ class BleBeaconModule: KrollModule() {
 			Encounter.actualEncounterTimeout = value * 1000
 		}
 
+	// Scan stats & parameters
+
 	@Kroll.method
 	fun scanStats(): KrollDict {
 		return KrollDict(BeaconDetector.scanTimes.stats())
 	}
 
-	//// test app methods - TODO: delete
-
-	@Kroll.method
-	fun example(): String {
-		Log.d(LCAT, "example() called")
-		return "hello world"
-	}
-
-	@Kroll.method
-	fun testMethod(params: KrollDict) {
-		Log.d(LCAT, "testMethod() called")
-
-		// Access the parameters passed as an Object, e.g. "myModule.testMethod({ name: 'John Doe', flag: true })"
-		val name = params.getString("name")
-		val flag = params.optBoolean("flag", false)
-
-		// Fire an event that can be added via "myModule.addEventListener('shown', ...)"
-		val event = KrollDict()
-		event["name"] = name
-		event["flag"] = flag
-
-		fireEvent("", event)
-	}
-
-	// Properties
-
-	@get:Kroll.getProperty
 	@set:Kroll.setProperty
-	var exampleProp: String
-		get() {
-			Log.d(LCAT, "get example property")
-			return "hello world"
-		}
-		set(value) {
-			Log.d(LCAT, "set example property: $value")
-		}
+	var betweenScanPeriod by BeaconDetector::betweenScanPeriod
+
+	@set:Kroll.setProperty
+	var scanPeriod by BeaconDetector::scanPeriod
 }

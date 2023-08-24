@@ -37,8 +37,9 @@ private const val TAG = "BeaconDetector"
 object BeaconDetector {
     var betweenScanPeriod: Long = 30 * 1000
     var scanPeriod: Long = 10 * 1000
+    var scanIntervalWarningThreshold = 5 * 60 * 1000L
 
-    var scanTimes = EventTimes()
+    val scanTimes = EventTimes()
 
     //lateinit var region: Region
 
@@ -48,7 +49,8 @@ object BeaconDetector {
     // private var started by persistedBoolean(false)
 
     init {
-        AppMessageQueue.appLog("$TAG created")
+        Log.e(TAG,"created, betweenScanPeriod=$betweenScanPeriod")
+        //AppMessageQueue.appLog("$TAG created, betweenScanPeriod=$betweenScanPeriod")
     }
 
     fun start(whence: String) {
@@ -57,10 +59,12 @@ object BeaconDetector {
         // This line is needed so that the friends list is loaded (by side-effect) after the
         // application has been killed and the service restarts.
         val friends = Encounter.friendList
-        AppMessageQueue.appLog("$TAG start via $whence, previously started=$started",
-            "whence" to whence,
-            "previous_started" to started,
-            "friend_list" to Encounter.friendList.toString(),
+        AppMessageQueue.appLog("$TAG start",
+           "whence" to whence,
+            "alreadyStarted" to started,
+            "betweenScanPeriod" to betweenScanPeriod,
+            "scanPeriod" to scanPeriod,
+            "scanIntervalWarningThreshold" to scanIntervalWarningThreshold,
         )
 
         if (started) {
@@ -108,7 +112,11 @@ object BeaconDetector {
 
             // Ranging callbacks will drop out if no beacons are detected
             // Monitoring callbacks will be delayed by up to 25 minutes on region exit
-            // beaconManager.setIntentScanningStrategyEnabled(true)
+
+            // See https://altbeacon.github.io/android-beacon-library/detection_times.html
+            // If enabled I get kotlin.UninitializedPropertyAccessException:
+            // lateinit property scanState has not been initialized
+            //beaconManager.setIntentScanningStrategyEnabled(true)
 
             val regionViewModel =
                 BeaconManager.getInstanceForApplication(context).getRegionViewModel(region)
@@ -125,12 +133,9 @@ object BeaconDetector {
     }
 
     val centralRangingObserver = Observer<Collection<Beacon>> { beacons ->
+        Log.d(TAG, "Detected ${beacons.count()} beacons, ${scanTimes.stats()}")
         scanTimes.previousMillis = System.currentTimeMillis()
-        Log.d(TAG, "Ranged: ${beacons.count()} beacons, ${scanTimes.stats()}")
-        val threshold = scanTimes.meanDeltaMillis + 2* scanTimes.stdDeltaMillis.coerceAtLeast(
-            0 * 60 * 1000.0
-        )
-        if(scanTimes.previousDTMillis > threshold) {
+        if(scanTimes.previousDTMillis > scanIntervalWarningThreshold) {
             AppMessageQueue.appLog("Long time since last scan ${scanTimes.stats()}")
         }
         for (beacon: Beacon in beacons) {
